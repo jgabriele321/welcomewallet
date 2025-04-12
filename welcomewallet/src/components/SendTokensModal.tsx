@@ -71,9 +71,11 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
     }
     
     // Check balance
-    const assetBalance = assets.find(a => a.symbol === selectedAsset)?.balance || '0';
+    // The assets array might have different case for symbols compared to SUPPORTED_ASSETS
+    const assetBalance = assets.find(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase())?.balance || '0';
+    console.log('Asset balance check:', selectedAsset, assetBalance, assets);
     if (parseFloat(amount) > parseFloat(assetBalance)) {
-      setError(`Insufficient ${selectedAsset} balance`);
+      setError(`Insufficient ${selectedAsset} balance (have: ${assetBalance})`);
       return false;
     }
     
@@ -223,7 +225,7 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
               </div>
             </div>
             <div className="text-xs text-gray-400 mt-1">
-              Balance: {assets.find(a => a.symbol === selectedAsset)?.balance || '0'} {selectedAsset}
+              Balance: {assets.find(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase())?.balance || '0'} {selectedAsset}
             </div>
           </div>
           

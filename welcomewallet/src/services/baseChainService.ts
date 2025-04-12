@@ -109,12 +109,12 @@ export const getAllTokenBalances = async (address: string): Promise<Asset[]> => 
         icon: '⬨', // Ethereum symbol
       },
       {
-        symbol: usdcBalance.symbol,
+        symbol: 'USDC', // Hardcode to ensure consistency
         balance: usdcBalance.balance,
         icon: '$', // Dollar symbol for USDC
       },
       {
-        symbol: tobyBalance.symbol,
+        symbol: 'TOBY', // Hardcode to ensure consistency
         balance: tobyBalance.balance,
         icon: '🔹', // Generic token symbol for TOBY
       },
