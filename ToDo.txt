@@ -1,6 +1,6 @@
-Double check that wallets are consistent 
-Figure out how to host outside of localhost to share with friends 
+
 Add a "get Toby" button that gives you 10 toby an hour
 Add a Send button 
+Figure out how to host outside of localhost to share with friends 
 Add a swap page
 Find a way to host this indefinitely easily 
