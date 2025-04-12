@@ -13,7 +13,7 @@ const ERC20_ABI = [
 ];
 
 // Toby token contract address on Base network - from environment variable
-const TOBY_TOKEN_ADDRESS = process.env.REACT_APP_TOBY_TOKEN_ADDRESS || '0x0000000000000000000000000000000000000000';
+const TOBY_TOKEN_ADDRESS = import.meta.env.VITE_TOBY_TOKEN_ADDRESS || '0x0000000000000000000000000000000000000000';
 
 // Interface for app wallet configuration
 interface AppWalletConfig {
@@ -31,9 +31,9 @@ let appWallet: AppWalletConfig | null = null;
  */
 export const initializeAppWallet = (): AppWalletConfig | null => {
   try {
-    const privateKey = process.env.REACT_APP_WALLET_PRIVATE_KEY;
-    const address = process.env.REACT_APP_WALLET_ADDRESS;
-    const rpcUrl = process.env.REACT_APP_BASE_RPC_URL;
+    const privateKey = import.meta.env.VITE_WALLET_PRIVATE_KEY;
+    const address = import.meta.env.VITE_WALLET_ADDRESS;
+    const rpcUrl = import.meta.env.VITE_BASE_RPC_URL;
     
     if (!address) {
       console.warn('App wallet address not configured');
