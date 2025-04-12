@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAppWallet, canSendTokens } from '../services/appWalletService';
+import { getAppWallet, canSendTokens, sendTobyTokens } from '../services/appWalletService';
 import useWallet from '../hooks/useWallet';
 
 /**
@@ -14,6 +14,7 @@ const GetTobyButton: React.FC = () => {
   const [nextClaimTime, setNextClaimTime] = useState<Date | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<string>('');
   const [canClaim, setCanClaim] = useState<boolean>(true);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
   // Load last claim time from localStorage when component mounts
   useEffect(() => {
@@ -68,6 +69,7 @@ const GetTobyButton: React.FC = () => {
     setLoading(true);
     setSuccess(false);
     setError(null);
+    setTxHash(null);
 
     try {
       // Check if user wallet address is available
@@ -101,11 +103,9 @@ const GetTobyButton: React.FC = () => {
         throw new Error('App wallet is not configured for sending tokens.');
       }
 
-      // For this demo, we're just simulating a successful token transfer
-      // In a real implementation, this would call a contract method to transfer tokens
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Send 10 Toby tokens to the user
+      const hash = await sendTobyTokens(walletAddress, 10);
+      setTxHash(hash);
 
       // Record claim time in localStorage
       localStorage.setItem(`lastClaim_${walletAddress}`, new Date().toISOString());
@@ -121,7 +121,7 @@ const GetTobyButton: React.FC = () => {
       // Reset success message after 3 seconds
       setTimeout(() => {
         setSuccess(false);
-      }, 3000);
+      }, 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
@@ -156,6 +156,12 @@ const GetTobyButton: React.FC = () => {
       
       {error && (
         <p className="mt-2 text-red-500 text-sm">{error}</p>
+      )}
+      
+      {txHash && (
+        <p className="mt-2 text-green-500 text-xs">
+          Transaction: {txHash.substring(0, 10)}...{txHash.substring(txHash.length - 8)}
+        </p>
       )}
       
       <p className="mt-2 text-sm text-gray-400">
