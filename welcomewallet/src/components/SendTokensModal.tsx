@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
+import { usePrivy } from '@privy-io/react-auth';
 import useWallet from '../hooks/useWallet';
 import useAssets from '../hooks/useAssets';
+import { sendTransaction, sendTokens, getTokenAddressBySymbol } from '../services/baseChainService';
 
 interface SendTokensModalProps {
   isOpen: boolean;
@@ -25,6 +27,7 @@ const GAS_OPTIONS = [
 const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) => {
   const { walletAddress } = useWallet();
   const { assets, refreshAssets } = useAssets(walletAddress || '');
+  const privy = usePrivy();
   
   // Form state
   const [recipient, setRecipient] = useState<string>('');
@@ -119,44 +122,58 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
     setTxHash(null);
     
     try {
-      // For this demo, we'll simulate a successful transaction
-      // In a real implementation, you would integrate with Privy SDK to get signer
-      // and use the baseChainService functions to send transactions
+      // Check if Privy is available
+      if (!privy.user || !privy.authenticated) {
+        throw new Error('Wallet not available. Please connect your wallet.');
+      }
       
-      // Example of how the implementation would look with Privy:
-      /*
-      import { usePrivy } from '@privy-io/react-auth';
-      import { sendTransaction, sendTokens, getTokenAddressBySymbol } from '../services/baseChainService';
+      // Get the provider and signer
+      const provider = await privy.getEthersProvider();
+      if (!provider) {
+        throw new Error('Could not connect to Ethereum provider.');
+      }
       
-      // Get the user's wallet from Privy
-      const { user } = usePrivy();
-      const wallet = user.wallet;
+      const signer = provider.getSigner();
+      if (!signer) {
+        throw new Error('Could not get signer from wallet.');
+      }
       
-      // Get the signer
-      const signer = await wallet.getEthersProvider().getSigner();
+      console.log('Getting ready to send transaction with:', {
+        user: privy.user,
+        provider,
+        signer,
+        selectedAsset,
+        recipient,
+        amount,
+        gasSpeed
+      });
       
       // Get gas multiplier based on selected speed
       const gasMultiplier = GAS_OPTIONS.find(option => option.name === gasSpeed)?.multiplier || 1.0;
       
-      // Send the transaction
+      // Get the transaction hash
       let txHash;
       if (selectedAsset === 'ETH') {
+        // Sending ETH
+        console.log(`Sending ${amount} ETH to ${recipient} with gas multiplier ${gasMultiplier}`);
         txHash = await sendTransaction(signer, recipient, amount, gasMultiplier);
       } else {
+        // Sending a token
         const tokenAddress = getTokenAddressBySymbol(selectedAsset);
+        console.log(`Token address for ${selectedAsset}:`, tokenAddress);
+        
+        if (!tokenAddress) {
+          throw new Error(`Could not find token address for ${selectedAsset}`);
+        }
+        
         const decimals = SUPPORTED_ASSETS.find(a => a.symbol === selectedAsset)?.decimals || 18;
+        console.log(`Sending ${amount} ${selectedAsset} (decimals: ${decimals}) to ${recipient}`);
+        
         txHash = await sendTokens(signer, tokenAddress, recipient, amount, decimals, gasMultiplier);
       }
-      */
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simulated transaction hash
-      const mockTxHash = '0x' + Array(64).fill(0).map(() => 
-        Math.floor(Math.random() * 16).toString(16)).join('');
-      
-      setTxHash(mockTxHash);
+      console.log('Transaction sent:', txHash);
+      setTxHash(txHash);
       
       // Refresh assets after successful transaction
       refreshAssets();
@@ -167,10 +184,24 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
         setRecipient('');
         setTxHash(null);
         onClose();
-      }, 3000);
+      }, 5000);
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Transaction failed');
+      console.error('Transaction failed:', err);
+      
+      // Handle various error types
+      if (err instanceof Error) {
+        // Customize error message based on error content
+        if (err.message.includes('user rejected transaction')) {
+          setError('Transaction was rejected by the user.');
+        } else if (err.message.includes('insufficient funds')) {
+          setError('Insufficient funds to complete this transaction.');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('Transaction failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
