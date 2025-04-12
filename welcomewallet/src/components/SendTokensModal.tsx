@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import useWallet from '../hooks/useWallet';
 import useAssets from '../hooks/useAssets';
@@ -24,7 +24,7 @@ const GAS_OPTIONS = [
 
 const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) => {
   const { walletAddress } = useWallet();
-  const { assets, refreshAssets } = useAssets();
+  const { assets, refreshAssets } = useAssets(walletAddress || '');
   
   // Form state
   const [recipient, setRecipient] = useState<string>('');
