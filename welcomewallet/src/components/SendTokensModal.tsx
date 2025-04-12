@@ -11,7 +11,7 @@ interface SendTokensModalProps {
 // Supported assets for sending
 const SUPPORTED_ASSETS = [
   { symbol: 'ETH', name: 'Ethereum', decimals: 18 },
-  { symbol: 'USDC', name: 'USD Coin', decimals: 6, address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA' },
+  { symbol: 'USDC', name: 'USD Coin', decimals: 6, address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' },
   { symbol: 'TOBY', name: 'Toby Token', decimals: 18, address: import.meta.env.VITE_TOBY_TOKEN_ADDRESS },
 ];
 
@@ -32,6 +32,14 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
   const [selectedAsset, setSelectedAsset] = useState<string>(SUPPORTED_ASSETS[0].symbol);
   const [gasSpeed, setGasSpeed] = useState<string>('Normal');
   
+  // When the modal opens, refresh asset balances
+  useEffect(() => {
+    if (isOpen && walletAddress) {
+      refreshAssets();
+      console.log('Available assets in SendTokensModal:', assets);
+    }
+  }, [isOpen, walletAddress, refreshAssets]);
+  
   // Transaction state
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +54,11 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
   // Validate the form
   const validateForm = (): boolean => {
     setError(null);
+    
+    // Debug available assets
+    console.log('All assets in validateForm:', assets);
+    console.log('Selected asset:', selectedAsset);
+    console.log('Supported assets:', SUPPORTED_ASSETS);
     
     // Check recipient
     if (!recipient) {
@@ -70,10 +83,25 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
       return false;
     }
     
+    // Debug each asset in the assets array to find the match
+    assets.forEach((asset, index) => {
+      console.log(`Asset ${index}:`, {
+        symbol: asset.symbol,
+        balance: asset.balance,
+        upperSymbol: asset.symbol.toUpperCase(),
+        selectedUpperSymbol: selectedAsset.toUpperCase(),
+        isMatch: asset.symbol.toUpperCase() === selectedAsset.toUpperCase()
+      });
+    });
+    
     // Check balance
     // The assets array might have different case for symbols compared to SUPPORTED_ASSETS
-    const assetBalance = assets.find(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase())?.balance || '0';
-    console.log('Asset balance check:', selectedAsset, assetBalance, assets);
+    const matchingAsset = assets.find(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase());
+    const assetBalance = matchingAsset?.balance || '0';
+    
+    console.log('Matching asset:', matchingAsset);
+    console.log('Asset balance for selected asset:', assetBalance);
+    
     if (parseFloat(amount) > parseFloat(assetBalance)) {
       setError(`Insufficient ${selectedAsset} balance (have: ${assetBalance})`);
       return false;

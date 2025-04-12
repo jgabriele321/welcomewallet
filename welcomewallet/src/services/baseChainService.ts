@@ -71,6 +71,8 @@ export const getTokenBalance = async (
     
     const balance = ethers.utils.formatUnits(balanceRaw, decimals);
     
+    console.log(`Token balance for ${tokenAddress}: ${balance} ${symbol}`);
+    
     return { 
       balance, 
       symbol 
@@ -96,13 +98,25 @@ export const getAllTokenBalances = async (address: string): Promise<Asset[]> => 
     // Get ETH balance
     const ethBalance = await getEthBalance(address);
     
+    // Debug token addresses
+    console.log('Token addresses used for balance check:', {
+      USDC: TOKENS.USDC,
+      TOBY: TOKENS.TOBY,
+      ENV_TOBY: import.meta.env.VITE_TOBY_TOKEN_ADDRESS
+    });
+    
     // Get token balances in parallel
     const [usdcBalance, tobyBalance] = await Promise.all([
       getTokenBalance(address, TOKENS.USDC),
       getTokenBalance(address, TOKENS.TOBY),
     ]);
     
-    return [
+    console.log('Raw token balances:', {
+      usdcBalance,
+      tobyBalance
+    });
+    
+    const result = [
       {
         symbol: 'ETH',
         balance: ethBalance,
@@ -119,6 +133,10 @@ export const getAllTokenBalances = async (address: string): Promise<Asset[]> => 
         icon: '🔹', // Generic token symbol for TOBY
       },
     ];
+    
+    console.log('Final assets returned:', result);
+    
+    return result;
   } catch (error) {
     console.error('Error getting all token balances:', error);
     return [];
