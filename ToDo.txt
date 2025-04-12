@@ -1,5 +1,5 @@
 
-Add a "get Toby" button that gives you 10 toby an hour
+✅ Add a "get Toby" button that gives you 10 toby an hour
 Add a Send button 
 Figure out how to host outside of localhost to share with friends 
 Add a swap page
