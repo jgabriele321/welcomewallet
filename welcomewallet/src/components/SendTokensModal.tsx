@@ -122,25 +122,41 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
     setTxHash(null);
     
     try {
-      // Check if Privy is available
+      // Check if Privy is authenticated
       if (!privy.user || !privy.authenticated) {
         throw new Error('Wallet not available. Please connect your wallet.');
       }
       
-      // Get the provider and signer
-      const provider = await privy.getEthersProvider();
+      // Get the connected wallet from Privy
+      const connectedWallets = privy.user.linkedAccounts?.filter(
+        account => account.type === 'wallet'
+      );
+      
+      if (!connectedWallets || connectedWallets.length === 0) {
+        throw new Error('No wallet connected. Please connect a wallet first.');
+      }
+      
+      const wallet = connectedWallets[0];
+      console.log('Connected wallet:', wallet);
+      
+      // Get the EIP-1193 provider
+      const provider = await wallet.getProvider();
       if (!provider) {
         throw new Error('Could not connect to Ethereum provider.');
       }
       
-      const signer = provider.getSigner();
+      // Create an ethers provider from the EIP-1193 provider
+      const ethersProvider = new ethers.providers.Web3Provider(provider);
+      const signer = ethersProvider.getSigner();
+      
       if (!signer) {
         throw new Error('Could not get signer from wallet.');
       }
       
       console.log('Getting ready to send transaction with:', {
         user: privy.user,
-        provider,
+        wallet,
+        ethersProvider,
         signer,
         selectedAsset,
         recipient,
