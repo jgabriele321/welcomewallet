@@ -127,29 +127,53 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
   
   // Handle sending tokens
   const handleSend = async () => {
-    if (!validateForm()) return;
+    console.log('▶️ handleSend started');
+    if (!validateForm()) {
+      console.log('❌ Form validation failed');
+      return;
+    }
     
+    console.log('✅ Form validated successfully');
     setIsLoading(true);
     setError(null);
     setTxHash(null);
     
     try {
       // Check if Privy is authenticated
+      console.log('🔍 Checking Privy authentication status:', { 
+        user: privy.user ? 'exists' : 'null', 
+        authenticated: privy.authenticated,
+        ready: privy.ready
+      });
+      
       if (!privy.user || !privy.authenticated) {
+        console.log('❌ Privy not authenticated');
         throw new Error('Wallet not available. Please connect your wallet.');
       }
+      
+      console.log('✅ Privy is authenticated');
       
       // Get the connected wallet from Privy
       const connectedWallets = privy.user.linkedAccounts?.filter(
         account => account.type === 'wallet'
       );
       
+      console.log('🔍 Connected wallets:', {
+        count: connectedWallets?.length || 0,
+        wallets: connectedWallets || 'none'
+      });
+      
       if (!connectedWallets || connectedWallets.length === 0) {
+        console.log('❌ No connected wallets found');
         throw new Error('No wallet connected. Please connect a wallet first.');
       }
       
       const wallet = connectedWallets[0];
-      console.log('Connected wallet:', wallet);
+      console.log('✅ Using wallet:', {
+        id: wallet.id,
+        address: wallet.address,
+        type: wallet.walletClientType
+      });
       
       console.log('Using Base chain provider directly...');
       
@@ -162,17 +186,32 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
       
       // For sending transactions, we'll use a simple implementation of a signer
       // that delegates signing operations to Privy
+      console.log('🔧 Creating custom signer for wallet address:', wallet.address);
+      
       const signer = {
-        getAddress: async () => wallet.address,
-        signMessage: async (message: string) => {
-          console.log('Signing message via Privy:', message);
-          return await privy.signMessage({ 
-            message, 
-            address: wallet.address 
-          });
+        getAddress: async () => {
+          console.log('📝 getAddress called, returning:', wallet.address);
+          return wallet.address;
         },
+        
+        signMessage: async (message: string) => {
+          console.log('📝 signMessage called with:', message);
+          try {
+            console.log('📝 Calling privy.signMessage with address:', wallet.address);
+            const signature = await privy.signMessage({ 
+              message, 
+              address: wallet.address 
+            });
+            console.log('✅ Message signed successfully, signature:', signature);
+            return signature;
+          } catch (error) {
+            console.error('❌ Error signing message:', error);
+            throw error;
+          }
+        },
+        
         sendTransaction: async (tx: ethers.utils.Deferrable<ethers.providers.TransactionRequest>) => {
-          console.log('Sending transaction via Privy:', tx);
+          console.log('📤 sendTransaction called with transaction:', JSON.stringify(tx, null, 2));
           
           // Format transaction for Privy
           const transaction = {
@@ -184,22 +223,40 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
             network: 'base', // Explicitly specify Base network
           };
           
-          // Send transaction directly via Privy
-          const result = await privy.sendTransaction({
-            transaction,
-            address: wallet.address,
-            chainId: 'eip155:8453' // Explicitly specify Base chain in CAIP-2 format
-          });
+          console.log('📤 Formatted transaction for Privy:', JSON.stringify(transaction, null, 2));
+          console.log('📤 Using wallet address:', wallet.address);
           
-          console.log('Transaction result:', result);
-          return {
-            hash: result.hash,
-            wait: async () => baseProvider.waitForTransaction(result.hash)
-          };
+          try {
+            console.log('📤 Calling privy.sendTransaction...');
+            
+            // Send transaction directly via Privy
+            const result = await privy.sendTransaction({
+              transaction,
+              address: wallet.address,
+              chainId: 'eip155:8453' // Explicitly specify Base chain in CAIP-2 format
+            });
+            
+            console.log('✅ Transaction sent successfully, result:', result);
+            return {
+              hash: result.hash,
+              wait: async () => {
+                console.log('⏳ Waiting for transaction confirmation...');
+                const receipt = await baseProvider.waitForTransaction(result.hash);
+                console.log('✅ Transaction confirmed, receipt:', receipt);
+                return receipt;
+              }
+            };
+          } catch (error) {
+            console.error('❌ Error sending transaction:', error);
+            throw error;
+          }
         },
+        
         provider: baseProvider,
         _isSigner: true
       } as unknown as ethers.Signer;
+      
+      console.log('✅ Custom signer created successfully');
       
       console.log('Created custom signer for wallet:', wallet.address);
       
@@ -220,29 +277,47 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
       
       // Get gas multiplier based on selected speed
       const gasMultiplier = GAS_OPTIONS.find(option => option.name === gasSpeed)?.multiplier || 1.0;
+      console.log('⚙️ Using gas multiplier:', gasMultiplier);
       
       // Get the transaction hash
       let txHash;
       if (selectedAsset === 'ETH') {
         // Sending ETH
-        console.log(`Sending ${amount} ETH to ${recipient} with gas multiplier ${gasMultiplier}`);
-        txHash = await sendTransaction(signer, recipient, amount, gasMultiplier);
+        console.log(`📤 Preparing to send ${amount} ETH to ${recipient}`);
+        console.log('📤 Calling sendTransaction with custom signer...');
+        
+        try {
+          txHash = await sendTransaction(signer, recipient, amount, gasMultiplier);
+          console.log('✅ ETH transaction successful, hash:', txHash);
+        } catch (error) {
+          console.error('❌ ETH transaction failed:', error);
+          throw error;
+        }
       } else {
         // Sending a token
+        console.log(`📤 Preparing to send ${selectedAsset} token`);
         const tokenAddress = getTokenAddressBySymbol(selectedAsset);
-        console.log(`Token address for ${selectedAsset}:`, tokenAddress);
+        console.log(`📤 Token address for ${selectedAsset}:`, tokenAddress);
         
         if (!tokenAddress) {
+          console.error(`❌ Could not find token address for ${selectedAsset}`);
           throw new Error(`Could not find token address for ${selectedAsset}`);
         }
         
         const decimals = SUPPORTED_ASSETS.find(a => a.symbol === selectedAsset)?.decimals || 18;
-        console.log(`Sending ${amount} ${selectedAsset} (decimals: ${decimals}) to ${recipient}`);
+        console.log(`📤 Sending ${amount} ${selectedAsset} (decimals: ${decimals}) to ${recipient}`);
+        console.log('📤 Calling sendTokens with custom signer...');
         
-        txHash = await sendTokens(signer, tokenAddress, recipient, amount, decimals, gasMultiplier);
+        try {
+          txHash = await sendTokens(signer, tokenAddress, recipient, amount, decimals, gasMultiplier);
+          console.log('✅ Token transaction successful, hash:', txHash);
+        } catch (error) {
+          console.error('❌ Token transaction failed:', error);
+          throw error;
+        }
       }
       
-      console.log('Transaction sent:', txHash);
+      console.log('✅ Transaction successful with hash:', txHash);
       setTxHash(txHash);
       
       // Refresh assets after successful transaction

@@ -192,29 +192,71 @@ export const sendTransaction = async (
   amount: string,
   gasMultiplier: number = 1.0
 ): Promise<string> => {
+  console.log('🔷 baseChainService.sendTransaction called with:', {
+    toAddress,
+    amount,
+    gasMultiplier,
+    signerAvailable: !!signer
+  });
+  
   try {
     // Convert amount to wei
+    console.log('🔷 Converting amount to wei:', amount);
     const amountWei = ethers.utils.parseEther(amount);
+    console.log('🔷 Amount in wei:', amountWei.toString());
     
     // Get gas price and adjust by multiplier
+    console.log('🔷 Getting Base provider...');
     const provider = getBaseProvider();
+    
+    console.log('🔷 Getting gas price...');
     const gasPrice = await provider.getGasPrice();
+    console.log('🔷 Current gas price:', gasPrice.toString());
+    
     const adjustedGasPrice = gasPrice.mul(Math.floor(gasMultiplier * 100)).div(100);
+    console.log('🔷 Adjusted gas price:', adjustedGasPrice.toString());
     
     // Create transaction with explicit chainId for Base
-    const tx = await signer.sendTransaction({
+    console.log('🔷 Preparing transaction with chainId:', CHAIN_IDS.BASE);
+    
+    const txRequest = {
       to: toAddress,
       value: amountWei,
       gasPrice: adjustedGasPrice,
       chainId: CHAIN_IDS.BASE, // Base chain ID (8453)
+    };
+    console.log('🔷 Transaction request ready:', txRequest);
+    
+    console.log('🔷 Calling signer.sendTransaction...');
+    const tx = await signer.sendTransaction(txRequest);
+    console.log('🔷 Transaction sent successfully!');
+    console.log('🔷 Transaction details:', {
+      hash: tx.hash,
+      from: tx.from,
+      to: tx.to,
+      value: tx.value?.toString(),
     });
     
     // Wait for transaction to be mined
-    await tx.wait();
+    console.log('🔷 Waiting for transaction confirmation...');
+    const receipt = await tx.wait();
+    console.log('🔷 Transaction confirmed! Block:', receipt.blockNumber);
     
     return tx.hash;
   } catch (error) {
-    console.error('Error sending ETH:', error);
+    console.error('❌ Error sending ETH:', error);
+    
+    // Additional error details
+    if (error.code) {
+      console.error('❌ Error code:', error.code);
+    }
+    if (error.reason) {
+      console.error('❌ Error reason:', error.reason);
+    }
+    if (error.error) {
+      console.error('❌ Inner error:', error.error);
+    }
+    
     throw error;
   }
 };
@@ -237,30 +279,78 @@ export const sendTokens = async (
   decimals: number = 18,
   gasMultiplier: number = 1.0
 ): Promise<string> => {
+  console.log('🔶 baseChainService.sendTokens called with:', {
+    tokenAddress,
+    toAddress,
+    amount,
+    decimals,
+    gasMultiplier,
+    signerAvailable: !!signer
+  });
+  
   try {
     // Convert amount to token units
+    console.log(`🔶 Converting amount to token units with ${decimals} decimals:`, amount);
     const amountUnits = ethers.utils.parseUnits(amount, decimals);
+    console.log('🔶 Amount in token units:', amountUnits.toString());
     
     // Get gas price and adjust by multiplier
+    console.log('🔶 Getting Base provider...');
     const provider = getBaseProvider();
+    
+    console.log('🔶 Getting gas price...');
     const gasPrice = await provider.getGasPrice();
+    console.log('🔶 Current gas price:', gasPrice.toString());
+    
     const adjustedGasPrice = gasPrice.mul(Math.floor(gasMultiplier * 100)).div(100);
+    console.log('🔶 Adjusted gas price:', adjustedGasPrice.toString());
     
     // Create token contract instance with signer
+    console.log('🔶 Creating token contract instance for address:', tokenAddress);
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+    console.log('🔶 Token contract created successfully');
     
-    // Send token transfer transaction (can't override chainId in contract methods)
-    const tx = await tokenContract.transfer(toAddress, amountUnits, {
+    // Prepare transaction options
+    const txOptions = {
       gasPrice: adjustedGasPrice,
       // Note: Don't include chainId here - it's determined by the provider
+    };
+    console.log('🔶 Transaction options:', txOptions);
+    
+    // Log contract details
+    console.log('🔶 Sending token transfer, details:', {
+      from: await signer.getAddress(),
+      to: toAddress,
+      tokenContract: tokenAddress,
+      amount: amountUnits.toString(),
     });
     
+    // Send token transfer transaction
+    console.log('🔶 Calling tokenContract.transfer...');
+    const tx = await tokenContract.transfer(toAddress, amountUnits, txOptions);
+    console.log('🔶 Token transfer transaction sent successfully!');
+    console.log('🔶 Transaction hash:', tx.hash);
+    
     // Wait for transaction to be mined
-    await tx.wait();
+    console.log('🔶 Waiting for transaction confirmation...');
+    const receipt = await tx.wait();
+    console.log('🔶 Transaction confirmed! Block:', receipt.blockNumber);
     
     return tx.hash;
   } catch (error) {
-    console.error('Error sending tokens:', error);
+    console.error('❌ Error sending tokens:', error);
+    
+    // Additional error details
+    if (error.code) {
+      console.error('❌ Error code:', error.code);
+    }
+    if (error.reason) {
+      console.error('❌ Error reason:', error.reason);
+    }
+    if (error.error) {
+      console.error('❌ Inner error:', error.error);
+    }
+    
     throw error;
   }
 };
