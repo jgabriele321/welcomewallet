@@ -168,107 +168,111 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
         throw new Error('No wallet connected. Please connect a wallet first.');
       }
       
-      const wallet = connectedWallets[0];
-      console.log('✅ Using wallet:', {
-        id: wallet.id,
-        address: wallet.address,
-        type: wallet.walletClientType
-      });
+      // For this improved approach, we'll try to access embedded wallets directly
+      console.log('🔍 Checking for embedded wallets in privy.user:', !!privy.user?.wallet);
       
-      console.log('Using Base chain provider directly...');
+      // Get wallet in order of preference: embedded wallet first, then connected wallets
+      let selectedWallet;
+      let provider;
+      let signer;
       
-      // Create a direct provider to Base chain for read operations
-      const baseProvider = new ethers.providers.JsonRpcProvider(
-        import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org',
-        { chainId: 8453, name: 'Base' }
-      );
-      console.log('Created Base chain provider with chainId 8453');
-      
-      // For sending transactions, we'll use a simple implementation of a signer
-      // that delegates signing operations to Privy
-      console.log('🔧 Creating custom signer for wallet address:', wallet.address);
-      
-      const signer = {
-        getAddress: async () => {
-          console.log('📝 getAddress called, returning:', wallet.address);
-          return wallet.address;
-        },
+      if (privy.user?.wallet) {
+        // Use the embedded wallet if available
+        selectedWallet = privy.user.wallet;
+        console.log('✅ Using Privy embedded wallet:', selectedWallet);
         
-        signMessage: async (message: string) => {
-          console.log('📝 signMessage called with:', message);
-          try {
-            console.log('📝 Calling privy.signMessage with address:', wallet.address);
-            const signature = await privy.signMessage({ 
-              message, 
-              address: wallet.address 
-            });
-            console.log('✅ Message signed successfully, signature:', signature);
-            return signature;
-          } catch (error) {
-            console.error('❌ Error signing message:', error);
-            throw error;
-          }
-        },
-        
-        sendTransaction: async (tx: ethers.utils.Deferrable<ethers.providers.TransactionRequest>) => {
-          console.log('📤 sendTransaction called with transaction:', JSON.stringify(tx, null, 2));
+        try {
+          // Create a direct provider to Base chain for read operations
+          console.log('📡 Creating Base chain provider...');
+          const baseProvider = new ethers.providers.JsonRpcProvider(
+            import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org',
+            { chainId: 8453, name: 'Base' }
+          );
+          console.log('✅ Base chain provider created');
           
-          // Format transaction for Privy
-          const transaction = {
-            to: tx.to as string,
-            value: tx.value ? tx.value.toString() : undefined,
-            data: tx.data as string,
-            // Note: Only include chainId for direct ETH transfers, not for contract calls
-            ...(tx.data ? {} : { chainId: 8453 }), // Only add chainId if not a contract call
-            network: 'base', // Explicitly specify Base network
-          };
+          // Create a special proxy signer that directly uses Privy's methods
+          console.log('🔧 Creating direct transaction sender with Base provider...');
+          signer = new ethers.VoidSigner(selectedWallet.address, baseProvider);
           
-          console.log('📤 Formatted transaction for Privy:', JSON.stringify(transaction, null, 2));
-          console.log('📤 Using wallet address:', wallet.address);
-          
-          try {
-            console.log('📤 Calling privy.sendTransaction...');
+          // Override the sendTransaction method to use Privy's sendTransaction
+          const originalSendTransaction = signer.sendTransaction.bind(signer);
+          signer.sendTransaction = async (tx) => {
+            console.log('📤 Direct transaction request:', tx);
             
-            // Send transaction directly via Privy
+            // Format the transaction for Privy
+            const transaction = {
+              to: tx.to as string,
+              value: tx.value ? tx.value.toString() : undefined,
+              data: tx.data as string,
+              // Base chain settings
+              chainId: 'eip155:8453'
+            };
+            
+            console.log('📤 Sending transaction via privy.sendTransaction:', transaction);
+            
+            // Use Privy's sendTransaction directly with the embedded wallet
             const result = await privy.sendTransaction({
               transaction,
-              address: wallet.address,
-              chainId: 'eip155:8453' // Explicitly specify Base chain in CAIP-2 format
+              wallet: 'embedded'  // This should trigger the embedded wallet UI
             });
             
-            console.log('✅ Transaction sent successfully, result:', result);
+            console.log('✅ Transaction result:', result);
+            
+            // Create a transaction response object compatible with ethers.js
             return {
               hash: result.hash,
-              wait: async () => {
-                console.log('⏳ Waiting for transaction confirmation...');
-                const receipt = await baseProvider.waitForTransaction(result.hash);
-                console.log('✅ Transaction confirmed, receipt:', receipt);
-                return receipt;
-              }
+              wait: async () => baseProvider.waitForTransaction(result.hash),
+              ...result
             };
-          } catch (error) {
-            console.error('❌ Error sending transaction:', error);
-            throw error;
-          }
-        },
+          };
+          
+          console.log('✅ Custom signer ready for transactions');
+        } catch (error) {
+          console.error('❌ Error setting up embedded wallet signer:', error);
+          throw error;
+        }
+      } else if (connectedWallets.length > 0) {
+        // Use the first connected wallet
+        selectedWallet = connectedWallets[0];
+        console.log('✅ Using connected wallet:', selectedWallet);
         
-        provider: baseProvider,
-        _isSigner: true
-      } as unknown as ethers.Signer;
+        try {
+          // For connected wallets, use the standard Privy method
+          console.log('📡 Connecting to wallet using privy.connectWallet...');
+          provider = await privy.connectWallet(selectedWallet.id);
+          console.log('✅ Connected to wallet, provider:', provider ? 'available' : 'null');
+          
+          if (!provider) {
+            throw new Error('Could not get provider from connected wallet');
+          }
+          
+          // Create an ethers provider
+          const ethersProvider = new ethers.providers.Web3Provider(provider);
+          console.log('✅ Created ethers provider');
+          
+          // Get signer
+          signer = ethersProvider.getSigner();
+          console.log('✅ Got signer from provider');
+        } catch (error) {
+          console.error('❌ Error setting up connected wallet:', error);
+          throw error;
+        }
+      } else {
+        console.error('❌ No wallets available');
+        throw new Error('No wallet available. Please connect a wallet first.');
+      }
       
-      console.log('✅ Custom signer created successfully');
-      
-      console.log('Created custom signer for wallet:', wallet.address);
+      console.log('✅ Signer created successfully');
       
       if (!signer) {
         throw new Error('Could not get signer from wallet.');
       }
       
       console.log('Getting ready to send transaction with:', {
-        user: privy.user,
-        wallet,
-        provider: baseProvider,
-        signer,
+        user: privy.user ? 'available' : 'null',
+        wallet: selectedWallet?.address,
+        provider: provider ? 'available' : 'null',
+        signer: signer ? 'available' : 'null',
         selectedAsset,
         recipient,
         amount,
