@@ -10,11 +10,23 @@ interface SendTokensModalProps {
   onClose: () => void;
 }
 
-// Supported assets for sending
+// Supported assets for sending (all on Base chain)
 const SUPPORTED_ASSETS = [
-  { symbol: 'ETH', name: 'Ethereum', decimals: 18 },
-  { symbol: 'USDC', name: 'USD Coin', decimals: 6, address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' },
-  { symbol: 'TOBY', name: 'Toby Token', decimals: 18, address: import.meta.env.VITE_TOBY_TOKEN_ADDRESS },
+  { symbol: 'ETH', name: 'Ethereum on Base', decimals: 18, chainId: 8453 },
+  { 
+    symbol: 'USDC', 
+    name: 'USD Coin on Base', 
+    decimals: 6, 
+    address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Base chain USDC
+    chainId: 8453 
+  },
+  { 
+    symbol: 'TOBY', 
+    name: 'Toby Token on Base', 
+    decimals: 18, 
+    address: import.meta.env.VITE_TOBY_TOKEN_ADDRESS,
+    chainId: 8453 
+  },
 ];
 
 // Gas speed options
@@ -169,12 +181,14 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
             data: tx.data as string,
             // Note: Only include chainId for direct ETH transfers, not for contract calls
             ...(tx.data ? {} : { chainId: 8453 }), // Only add chainId if not a contract call
+            network: 'base', // Explicitly specify Base network
           };
           
           // Send transaction directly via Privy
           const result = await privy.sendTransaction({
             transaction,
-            address: wallet.address
+            address: wallet.address,
+            chainId: 'eip155:8453' // Explicitly specify Base chain in CAIP-2 format
           });
           
           console.log('Transaction result:', result);

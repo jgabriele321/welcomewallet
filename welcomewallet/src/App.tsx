@@ -49,6 +49,10 @@ const App: React.FC = () => {
         },
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
+          chains: {
+            defaultChain: 'eip155:8453', // Base chain ID in CAIP-2 format
+            supportedChains: ['eip155:8453'], // Only support Base
+          },
         },
       }}
     >

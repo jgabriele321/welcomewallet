@@ -11,10 +11,15 @@ const ERC20_ABI = [
   'function transfer(address to, uint256 amount) returns (bool)'
 ];
 
-// Token addresses on Base
+// Token addresses on Base chain
 const TOKENS = {
-  USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC on Base
-  TOBY: '0xb8d98a102b0079b69ffbc760c8d857a31653e56e', // TOBY token
+  USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC on Base (chainId 8453)
+  TOBY: '0xb8d98a102b0079b69ffbc760c8d857a31653e56e', // TOBY token on Base (chainId 8453)
+};
+
+// Chain ID constants
+const CHAIN_IDS = {
+  BASE: 8453, // Base mainnet
 };
 
 // Asset interface
@@ -29,11 +34,22 @@ export interface Asset {
  * @returns Provider for Base chain
  */
 export const getBaseProvider = (): ethers.providers.JsonRpcProvider => {
+  // Ensure we're connecting to Base chain
   const baseRpcUrl = import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org';
-  return new ethers.providers.JsonRpcProvider(baseRpcUrl, {
-    chainId: 8453,
-    name: 'Base'
+  
+  // Create a provider with explicit network information for Base chain
+  const provider = new ethers.providers.JsonRpcProvider(baseRpcUrl, {
+    chainId: CHAIN_IDS.BASE,
+    name: 'Base',
+    ensAddress: null  // Base doesn't use ENS
   });
+  
+  // Log the network to verify
+  provider.getNetwork().then(network => {
+    console.log('Connected to network:', network.name, 'chainId:', network.chainId);
+  });
+  
+  return provider;
 };
 
 /**
@@ -190,7 +206,7 @@ export const sendTransaction = async (
       to: toAddress,
       value: amountWei,
       gasPrice: adjustedGasPrice,
-      chainId: 8453, // Base chain ID
+      chainId: CHAIN_IDS.BASE, // Base chain ID (8453)
     });
     
     // Wait for transaction to be mined
