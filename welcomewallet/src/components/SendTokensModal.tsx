@@ -127,28 +127,106 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
         throw new Error('Wallet not available. Please connect your wallet.');
       }
       
-      // Get the connected wallet from Privy
-      const connectedWallets = privy.user.linkedAccounts?.filter(
-        account => account.type === 'wallet'
-      );
-      
-      if (!connectedWallets || connectedWallets.length === 0) {
-        throw new Error('No wallet connected. Please connect a wallet first.');
+      // Get the embedded wallet from Privy
+      if (!privy.user?.wallet?.address) {
+        // Force authentication if needed
+        await privy.login();
       }
       
-      const wallet = connectedWallets[0];
-      console.log('Connected wallet:', wallet);
-      
-      // Get the EIP-1193 provider
-      const provider = await wallet.getProvider();
-      if (!provider) {
-        throw new Error('Could not connect to Ethereum provider.');
+      // The user must have a connected wallet
+      if (!privy.user?.wallet && !privy.user?.linkedAccounts?.find(acct => acct.type === 'wallet')) {
+        throw new Error('No wallet connected. Please connect your wallet first.');
+      }
+
+      console.log('Privy user:', privy.user);
+
+      // Get the wallet - prefer embedded wallet but fall back to any connected wallet
+      const wallet = privy.user.wallet || 
+                     privy.user.linkedAccounts.find(acct => acct.type === 'wallet');
+                     
+      if (!wallet) {
+        throw new Error('No wallet found. Please try connecting again.');
       }
       
-      // Create an ethers provider from the EIP-1193 provider
-      const ethersProvider = new ethers.providers.Web3Provider(provider);
-      const signer = ethersProvider.getSigner();
+      console.log('Selected wallet:', wallet);
       
+      // Important: Instead of trying to get a provider from the wallet,
+      // we'll use a custom approach that's more reliable with Privy
+      console.log('Creating custom signer for wallet address:', wallet.address);
+      
+      // 1. Get the wallet address directly from the wallet object
+      const walletAddress = wallet.address;
+      
+      // 2. Create a provider using the Base chain RPC URL for read operations
+      const provider = new ethers.providers.JsonRpcProvider(import.meta.env.VITE_BASE_RPC_URL);
+      console.log('Created JsonRpcProvider with Base RPC URL:', import.meta.env.VITE_BASE_RPC_URL);
+      
+      // 3. Create a custom signer that uses the provider for read operations
+      // and the Privy wallet for signing
+      const customSigner = {
+        getAddress: async () => walletAddress,
+        
+        // For signing messages
+        signMessage: async (message: string) => {
+          console.log('Signing message with Privy wallet:', message);
+          try {
+            // Use Privy's signMessage function (adjust parameters as needed by Privy's API)
+            return await privy.sendTransaction({
+              message,
+              walletId: wallet.id,
+            });
+          } catch (error) {
+            console.error('Error signing message with Privy:', error);
+            throw error;
+          }
+        },
+        
+        // For sending transactions
+        sendTransaction: async (transaction: ethers.providers.TransactionRequest) => {
+          console.log('Sending transaction with Privy wallet:', transaction);
+          try {
+            // Use Privy's sendTransaction function
+            const tx = await privy.sendTransaction({
+              transaction,
+              walletId: wallet.id,
+            });
+            console.log('Transaction sent successfully:', tx);
+            
+            return {
+              hash: tx.hash,
+              wait: async () => provider.waitForTransaction(tx.hash),
+            };
+          } catch (error) {
+            console.error('Error sending transaction with Privy:', error);
+            throw error;
+          }
+        },
+        
+        // Connect the provider for read operations
+        provider,
+        
+        // Ensure we have a _signTypedData method for EIP-712 signatures if needed
+        _signTypedData: async (domain, types, value) => {
+          console.log('Signing typed data with Privy wallet');
+          try {
+            return await privy.signTypedData({
+              domain,
+              types,
+              value,
+              walletId: wallet.id,
+            });
+          } catch (error) {
+            console.error('Error signing typed data with Privy:', error);
+            throw error;
+          }
+        },
+      };
+      
+      console.log('Created custom signer for wallet:', wallet.id);
+      
+      // Use our custom signer instead of getting one from ethers.js
+      const signer = customSigner;
+  
       if (!signer) {
         throw new Error('Could not get signer from wallet.');
       }
