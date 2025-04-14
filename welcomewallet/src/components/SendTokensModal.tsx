@@ -167,7 +167,8 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
             to: tx.to as string,
             value: tx.value ? tx.value.toString() : undefined,
             data: tx.data as string,
-            chainId: 8453, // Explicitly set Base chain ID
+            // Note: Only include chainId for direct ETH transfers, not for contract calls
+            ...(tx.data ? {} : { chainId: 8453 }), // Only add chainId if not a contract call
           };
           
           // Send transaction directly via Privy

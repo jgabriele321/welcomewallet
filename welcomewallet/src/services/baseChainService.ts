@@ -233,10 +233,10 @@ export const sendTokens = async (
     // Create token contract instance with signer
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
     
-    // Send token transfer transaction with explicit chainId
+    // Send token transfer transaction (can't override chainId in contract methods)
     const tx = await tokenContract.transfer(toAddress, amountUnits, {
       gasPrice: adjustedGasPrice,
-      chainId: 8453, // Base chain ID
+      // Note: Don't include chainId here - it's determined by the provider
     });
     
     // Wait for transaction to be mined

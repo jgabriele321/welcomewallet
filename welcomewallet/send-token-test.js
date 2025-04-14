@@ -103,7 +103,7 @@ const sendTokens = async (signer, tokenAddress, toAddress, amount, decimals, gas
   const tx = {
     to: tokenAddress,
     data,
-    chainId: 8453 // Explicitly set Base chain ID
+    // Note: Don't add chainId for contract calls to avoid errors
   };
   
   // Use signer to send transaction
