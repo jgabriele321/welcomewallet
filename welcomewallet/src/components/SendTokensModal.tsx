@@ -127,195 +127,35 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
         throw new Error('Wallet not available. Please connect your wallet.');
       }
       
-      // Get the embedded wallet from Privy
-      if (!privy.user?.wallet?.address) {
-        // Force authentication if needed
-        await privy.login();
+      // Get the connected wallet from Privy
+      const connectedWallets = privy.user.linkedAccounts?.filter(
+        account => account.type === 'wallet'
+      );
+      
+      if (!connectedWallets || connectedWallets.length === 0) {
+        throw new Error('No wallet connected. Please connect a wallet first.');
       }
       
-      // The user must have a connected wallet
-      if (!privy.user?.wallet && !privy.user?.linkedAccounts?.find(acct => acct.type === 'wallet')) {
-        throw new Error('No wallet connected. Please connect your wallet first.');
+      const wallet = connectedWallets[0];
+      console.log('Connected wallet:', wallet);
+      
+      // For ethers.js, we need to get a provider using Privy's connectWallet method
+      // This is the correct method to use with Privy wallets
+      console.log('Connecting to wallet through Privy connectWallet...');
+      
+      // Try to get a provider from Privy (may trigger wallet UI)
+      const provider = await privy.connectWallet(wallet.id);
+      
+      if (!provider) {
+        throw new Error('Failed to connect to wallet. Please try again.');
       }
-
-      console.log('Privy user:', privy.user);
-
-      // Get the wallet - prefer embedded wallet but fall back to any connected wallet
-      const wallet = privy.user.wallet || 
-                     privy.user.linkedAccounts.find(acct => acct.type === 'wallet');
-                     
-      if (!wallet) {
-        throw new Error('No wallet found. Please try connecting again.');
-      }
       
-      console.log('Selected wallet:', wallet);
+      console.log('Successfully connected to wallet through Privy:', provider);
       
-      // Important: Instead of trying to get a provider from the wallet,
-      // we'll use a custom approach that's more reliable with Privy
-      console.log('Creating custom signer for wallet address:', wallet.address);
-      console.log('Wallet type:', wallet.walletClientType);
+      // Create ethers provider using the provider from Privy
+      const ethersProvider = new ethers.providers.Web3Provider(provider);
+      const signer = ethersProvider.getSigner();
       
-      // 1. Get the wallet address directly from the wallet object
-      const walletAddress = wallet.address;
-      
-      // 2. Create a provider using the Base chain RPC URL for read operations
-      const provider = new ethers.providers.JsonRpcProvider(import.meta.env.VITE_BASE_RPC_URL);
-      console.log('Created JsonRpcProvider with Base RPC URL:', import.meta.env.VITE_BASE_RPC_URL);
-      
-      // Check if we're using an embedded Privy wallet or external wallet
-      const isEmbeddedWallet = wallet.walletClientType === 'privy';
-      console.log('Using embedded Privy wallet:', isEmbeddedWallet);
-      
-      // 3. Create a custom signer that uses the provider for read operations
-      // and the Privy wallet for signing
-      const customSigner = {
-        getAddress: async () => walletAddress,
-        
-        // For signing messages
-        signMessage: async (message: string) => {
-          console.log('Signing message with Privy wallet:', message);
-          try {
-            if (isEmbeddedWallet) {
-              console.log('Using embedded wallet for signing');
-              // For embedded wallets, use privy.user.wallet
-              if (privy.user?.wallet) {
-                return await privy.user.wallet.signMessage(message);
-              } else {
-                throw new Error('Embedded wallet not available');
-              }
-            } else {
-              console.log('Using connected wallet for signing');
-              // For connected wallets, use connectWallet
-              const walletClient = await privy.connectWallet(wallet.id);
-              if (!walletClient) {
-                throw new Error('Could not connect to wallet');
-              }
-              
-              // Create an ethers provider from the connected wallet
-              const connectedProvider = new ethers.providers.Web3Provider(walletClient);
-              const connectedSigner = connectedProvider.getSigner();
-              
-              // Sign message using the connected wallet
-              return await connectedSigner.signMessage(message);
-            }
-          } catch (error) {
-            console.error('Error signing message with Privy:', error);
-            throw error;
-          }
-        },
-        
-        // For sending transactions
-        sendTransaction: async (transaction: ethers.providers.TransactionRequest) => {
-          console.log('Sending transaction with Privy wallet:', transaction);
-          try {
-            // Convert ethers transaction format to Privy transaction format
-            const privyTx = {
-              to: transaction.to as string,
-              value: transaction.value ? ethers.utils.hexValue(transaction.value) : undefined,
-              data: transaction.data,
-              gasLimit: transaction.gasLimit ? ethers.utils.hexValue(transaction.gasLimit) : undefined,
-              gasPrice: transaction.gasPrice ? ethers.utils.hexValue(transaction.gasPrice) : undefined,
-            };
-            
-            console.log('Converted transaction format for Privy:', privyTx);
-            
-            let txHash;
-            
-            // Handle differently based on wallet type
-            if (isEmbeddedWallet) {
-              console.log('Using embedded wallet for transaction');
-              // For embedded wallets, use privy.user.wallet
-              if (privy.user?.wallet) {
-                const tx = await privy.user.wallet.sendTransaction(privyTx);
-                console.log('Embedded wallet transaction sent:', tx);
-                txHash = tx.hash || tx.txHash;
-              } else {
-                throw new Error('Embedded wallet not available');
-              }
-            } else {
-              console.log('Using connected wallet for transaction');
-              // For connected wallets, use connectWallet
-              const walletClient = await privy.connectWallet(wallet.id);
-              if (!walletClient) {
-                throw new Error('Could not connect to wallet');
-              }
-              
-              // Create an ethers provider from the connected wallet
-              const connectedProvider = new ethers.providers.Web3Provider(walletClient);
-              const connectedSigner = connectedProvider.getSigner();
-              
-              // Send transaction using the connected wallet
-              const tx = await connectedSigner.sendTransaction(transaction);
-              console.log('Connected wallet transaction sent:', tx);
-              txHash = tx.hash;
-            }
-            
-            if (!txHash) {
-              throw new Error('Transaction hash not returned');
-            }
-            
-            console.log('Transaction sent successfully with hash:', txHash);
-            
-            return {
-              hash: txHash,
-              wait: async () => {
-                // Wait for transaction confirmation
-                const receipt = await provider.waitForTransaction(txHash);
-                return receipt;
-              }
-            };
-          } catch (error) {
-            console.error('Error sending transaction with Privy:', error);
-            throw error;
-          }
-        },
-        
-        // Connect the provider for read operations
-        provider,
-        
-        // Ensure we have a _signTypedData method for EIP-712 signatures if needed
-        _signTypedData: async (domain, types, value) => {
-          console.log('Signing typed data with Privy wallet');
-          try {
-            if (isEmbeddedWallet) {
-              console.log('Using embedded wallet for typed data signing');
-              // For embedded wallets, use privy.user.wallet
-              if (privy.user?.wallet) {
-                return await privy.user.wallet.signTypedData(domain, types, value);
-              } else {
-                throw new Error('Embedded wallet not available');
-              }
-            } else {
-              console.log('Using connected wallet for typed data signing');
-              // For connected wallets, use connectWallet
-              const walletClient = await privy.connectWallet(wallet.id);
-              if (!walletClient) {
-                throw new Error('Could not connect to wallet');
-              }
-              
-              // Create an ethers provider from the connected wallet
-              const connectedProvider = new ethers.providers.Web3Provider(walletClient);
-              const connectedSigner = connectedProvider.getSigner();
-              
-              // Sign typed data using the connected wallet (if supported)
-              if (typeof connectedSigner._signTypedData === 'function') {
-                return await connectedSigner._signTypedData(domain, types, value);
-              } else {
-                throw new Error('Connected wallet does not support signTypedData');
-              }
-            }
-          } catch (error) {
-            console.error('Error signing typed data with Privy:', error);
-            throw error;
-          }
-        },
-      };
-      
-      console.log('Created custom signer for wallet:', wallet.id);
-      
-      // Use our custom signer instead of getting one from ethers.js
-      const signer = customSigner;
-  
       if (!signer) {
         throw new Error('Could not get signer from wallet.');
       }
