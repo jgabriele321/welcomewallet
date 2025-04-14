@@ -139,22 +139,50 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
       const wallet = connectedWallets[0];
       console.log('Connected wallet:', wallet);
       
-      // For ethers.js, we need to get a provider using Privy's connectWallet method
-      // This is the correct method to use with Privy wallets
-      console.log('Connecting to wallet through Privy connectWallet...');
+      console.log('Using Base chain provider directly...');
       
-      // Try to get a provider from Privy (may trigger wallet UI)
-      const provider = await privy.connectWallet(wallet.id);
+      // Create a direct provider to Base chain for read operations
+      const baseProvider = new ethers.providers.JsonRpcProvider(import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org');
+      console.log('Created Base chain provider');
       
-      if (!provider) {
-        throw new Error('Failed to connect to wallet. Please try again.');
-      }
+      // For sending transactions, we'll use a simple implementation of a signer
+      // that delegates signing operations to Privy
+      const signer = {
+        getAddress: async () => wallet.address,
+        signMessage: async (message: string) => {
+          console.log('Signing message via Privy:', message);
+          return await privy.signMessage({ 
+            message, 
+            address: wallet.address 
+          });
+        },
+        sendTransaction: async (tx: ethers.utils.Deferrable<ethers.providers.TransactionRequest>) => {
+          console.log('Sending transaction via Privy:', tx);
+          
+          // Format transaction for Privy
+          const transaction = {
+            to: tx.to as string,
+            value: tx.value ? tx.value.toString() : undefined,
+            data: tx.data as string,
+          };
+          
+          // Send transaction directly via Privy
+          const result = await privy.sendTransaction({
+            transaction,
+            address: wallet.address
+          });
+          
+          console.log('Transaction result:', result);
+          return {
+            hash: result.hash,
+            wait: async () => baseProvider.waitForTransaction(result.hash)
+          };
+        },
+        provider: baseProvider,
+        _isSigner: true
+      } as unknown as ethers.Signer;
       
-      console.log('Successfully connected to wallet through Privy:', provider);
-      
-      // Create ethers provider using the provider from Privy
-      const ethersProvider = new ethers.providers.Web3Provider(provider);
-      const signer = ethersProvider.getSigner();
+      console.log('Created custom signer for wallet:', wallet.address);
       
       if (!signer) {
         throw new Error('Could not get signer from wallet.');
