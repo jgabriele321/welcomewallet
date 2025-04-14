@@ -30,7 +30,10 @@ export interface Asset {
  */
 export const getBaseProvider = (): ethers.providers.JsonRpcProvider => {
   const baseRpcUrl = import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org';
-  return new ethers.providers.JsonRpcProvider(baseRpcUrl);
+  return new ethers.providers.JsonRpcProvider(baseRpcUrl, {
+    chainId: 8453,
+    name: 'Base'
+  });
 };
 
 /**
@@ -182,11 +185,12 @@ export const sendTransaction = async (
     const gasPrice = await provider.getGasPrice();
     const adjustedGasPrice = gasPrice.mul(Math.floor(gasMultiplier * 100)).div(100);
     
-    // Create transaction
+    // Create transaction with explicit chainId for Base
     const tx = await signer.sendTransaction({
       to: toAddress,
       value: amountWei,
       gasPrice: adjustedGasPrice,
+      chainId: 8453, // Base chain ID
     });
     
     // Wait for transaction to be mined
@@ -229,9 +233,10 @@ export const sendTokens = async (
     // Create token contract instance with signer
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
     
-    // Send token transfer transaction
+    // Send token transfer transaction with explicit chainId
     const tx = await tokenContract.transfer(toAddress, amountUnits, {
       gasPrice: adjustedGasPrice,
+      chainId: 8453, // Base chain ID
     });
     
     // Wait for transaction to be mined

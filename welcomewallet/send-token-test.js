@@ -4,7 +4,15 @@
  * This script helps test the SendTokensModal component integration with Privy
  * without having to manually interact with the UI.
  */
-const ethers = require('ethers');
+import { ethers } from 'ethers';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+
+// Get the Base RPC URL from environment or use default
+const baseRpcUrl = process.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org';
+console.log('Using Base RPC URL:', baseRpcUrl);
 
 // Mock wallet and provider
 const mockWallet = {
@@ -13,9 +21,12 @@ const mockWallet = {
   walletClientType: 'privy',
 };
 
-// Create a Base provider
-const baseProvider = new ethers.providers.JsonRpcProvider(process.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org');
-console.log('Created Base provider');
+// Create a Base provider with explicit chainId
+const baseProvider = new ethers.providers.JsonRpcProvider(baseRpcUrl, {
+  chainId: 8453,
+  name: 'Base'
+});
+console.log('Created Base provider for chainId 8453');
 
 // Create a custom signer using baseProvider for read operations
 // but with mocked sign/send methods for testing
@@ -65,6 +76,7 @@ const sendTransaction = async (signer, recipient, amount, gasMultiplier) => {
   const tx = {
     to: recipient,
     value: amountWei,
+    chainId: 8453 // Explicitly set Base chain ID
   };
   
   // Use signer to send transaction
@@ -91,6 +103,7 @@ const sendTokens = async (signer, tokenAddress, toAddress, amount, decimals, gas
   const tx = {
     to: tokenAddress,
     data,
+    chainId: 8453 // Explicitly set Base chain ID
   };
   
   // Use signer to send transaction

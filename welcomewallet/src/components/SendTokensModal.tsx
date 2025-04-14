@@ -142,8 +142,11 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
       console.log('Using Base chain provider directly...');
       
       // Create a direct provider to Base chain for read operations
-      const baseProvider = new ethers.providers.JsonRpcProvider(import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org');
-      console.log('Created Base chain provider');
+      const baseProvider = new ethers.providers.JsonRpcProvider(
+        import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org',
+        { chainId: 8453, name: 'Base' }
+      );
+      console.log('Created Base chain provider with chainId 8453');
       
       // For sending transactions, we'll use a simple implementation of a signer
       // that delegates signing operations to Privy
@@ -164,6 +167,7 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
             to: tx.to as string,
             value: tx.value ? tx.value.toString() : undefined,
             data: tx.data as string,
+            chainId: 8453, // Explicitly set Base chain ID
           };
           
           // Send transaction directly via Privy
