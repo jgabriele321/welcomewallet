@@ -191,7 +191,7 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
       console.log('Getting ready to send transaction with:', {
         user: privy.user,
         wallet,
-        ethersProvider,
+        provider: baseProvider,
         signer,
         selectedAsset,
         recipient,
