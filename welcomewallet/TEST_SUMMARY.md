@@ -43,6 +43,13 @@
    - Implemented proper Privy official `useSendTransaction` hook from documentation
    - Simplified transaction code to use the Privy hook directly 
    - Removed custom transaction handling and embedded wallet conditionals
+   
+6. **Transaction Gas Settings Enhancements (2025-04-15):**
+   - Added proper gas limit parameter to ensure faster transaction processing
+   - Implemented custom gas settings based on selected speed (Slow, Normal, Fast)
+   - Updated gas option UI to include more descriptive labels (Cheapest, Standard, Priority)
+   - Added more accurate time estimates for transaction confirmation based on Base chain performance
+   - Implemented gas limit multipliers: 1.0x for Slow, 1.1x for Normal, 1.3x for Fast
 
 ## Manual Testing Required
 

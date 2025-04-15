@@ -33,10 +33,27 @@ const SUPPORTED_ASSETS = [
 ];
 
 // Gas speed options
+// Note: These multipliers affect the gasLimit which directly impacts transaction priority
+// Values based on Base chain typical confirmation times
 const GAS_OPTIONS = [
-  { name: 'Slow', multiplier: 0.8, timeEstimate: '5-10 minutes' },
-  { name: 'Normal', multiplier: 1, timeEstimate: '1-3 minutes' },
-  { name: 'Fast', multiplier: 1.5, timeEstimate: '< 1 minute' },
+  { 
+    name: 'Slow', 
+    multiplier: 0.8, 
+    timeEstimate: '10-20 minutes',
+    gasLimitMultiplier: 1.0  // Standard gas limit
+  },
+  { 
+    name: 'Normal', 
+    multiplier: 1, 
+    timeEstimate: '3-10 minutes',
+    gasLimitMultiplier: 1.1  // 10% higher gas limit
+  },
+  { 
+    name: 'Fast', 
+    multiplier: 1.5, 
+    timeEstimate: '1-3 minutes',
+    gasLimitMultiplier: 1.3  // 30% higher gas limit
+  },
 ];
 
 const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) => {
@@ -157,9 +174,25 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
       
       console.log('✅ Privy is authenticated');
       
-      // Get gas multiplier based on selected speed
-      const gasMultiplier = GAS_OPTIONS.find(option => option.name === gasSpeed)?.multiplier || 1.0;
-      console.log('⚙️ Using gas multiplier:', gasMultiplier);
+      // Get gas settings based on selected speed
+      const selectedGasOption = GAS_OPTIONS.find(option => option.name === gasSpeed) || GAS_OPTIONS[1]; // Default to Normal
+      const gasLimitMultiplier = selectedGasOption.gasLimitMultiplier;
+      console.log('⚙️ Using gas settings:', {
+        option: selectedGasOption.name,
+        timeEstimate: selectedGasOption.timeEstimate,
+        gasLimitMultiplier
+      });
+      
+      // Calculate gas limit
+      // Base values based on Base chain's typical gas usage
+      // ETH transfers typically use ~21,000 gas, token transfers ~65,000 gas
+      const baseGasLimit = selectedAsset === 'ETH' ? 21000 : 100000;
+      const adjustedGasLimit = Math.floor(baseGasLimit * gasLimitMultiplier);
+      console.log('⚙️ Gas limit calculation:', {
+        baseGasLimit,
+        adjustedGasLimit,
+        multiplier: gasLimitMultiplier
+      });
       
       // Prepare transaction based on asset type
       if (selectedAsset === 'ETH') {
@@ -171,11 +204,12 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
         console.log('📤 Amount in wei:', amountWei.toString());
         
         try {
-          // Use the proper useSendTransaction hook method
+          // Use the proper useSendTransaction hook method with gas settings
           console.log('📤 Sending ETH with useSendTransaction()...');
           const result = await sendTransaction({
             to: recipient,
-            value: amountWei.toString()
+            value: amountWei.toString(),
+            gasLimit: `0x${adjustedGasLimit.toString(16)}` // Convert to hex string
           });
           
           const txHash = result.hash;
@@ -215,11 +249,12 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
             amountUnits
           ]);
           
-          // Use the proper useSendTransaction hook method
+          // Use the proper useSendTransaction hook method with gas settings
           console.log('📤 Sending token transaction with useSendTransaction()...');
           const result = await sendTransaction({
             to: tokenAddress,
-            data
+            data,
+            gasLimit: `0x${adjustedGasLimit.toString(16)}` // Convert to hex string
           });
           
           const txHash = result.hash;
@@ -361,6 +396,11 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
                 >
                   <div>{option.name}</div>
                   <div className="text-xs opacity-80">{option.timeEstimate}</div>
+                  <div className="text-xs opacity-70 mt-1">
+                    {option.name === 'Slow' ? 'Cheapest' : 
+                     option.name === 'Fast' ? 'Highest Priority' : 
+                     'Standard Fee'}
+                  </div>
                 </button>
               ))}
             </div>
