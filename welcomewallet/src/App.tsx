@@ -4,9 +4,6 @@ import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
 import './index.css';
 
-// Define Base chain ID for Privy
-const BASE_CHAIN_ID = 'eip155:8453';
-
 // AppContent component to handle authentication state
 const AppContent: React.FC = () => {
   const { ready, authenticated } = usePrivy();
@@ -52,11 +49,7 @@ const App: React.FC = () => {
         },
         embeddedWallets: {
           createOnLogin: 'users-without-wallets'
-        },
-        // Set Base as the default chain
-        defaultChain: BASE_CHAIN_ID,
-        // Only support Base chain
-        supportedChains: [BASE_CHAIN_ID]
+        }
       }}
     >
       <div className="App min-h-screen bg-welcome-bg text-white">
