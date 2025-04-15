@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { usePrivy } from '@privy-io/react-auth';
+import { useSendTransaction } from '@privy-io/react-auth';
 import useWallet from '../hooks/useWallet';
 import useAssets from '../hooks/useAssets';
-import { sendTransaction, sendTokens, getTokenAddressBySymbol } from '../services/baseChainService';
+import { getTokenAddressBySymbol } from '../services/baseChainService';
 
 interface SendTokensModalProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface SendTokensModalProps {
 }
 
 // Supported assets for sending (all on Base chain)
+// Note: For Privy embedded wallets, chainIds must be in CAIP-2 format ('eip155:8453')
+// when sending transactions, but we use numeric format (8453) here for asset definitions
 const SUPPORTED_ASSETS = [
   { symbol: 'ETH', name: 'Ethereum on Base', decimals: 18, chainId: 8453 },
   { 
@@ -40,6 +43,7 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
   const { walletAddress } = useWallet();
   const { assets, refreshAssets } = useAssets(walletAddress || '');
   const privy = usePrivy();
+  const { sendTransaction } = useSendTransaction();
   
   // Form state
   const [recipient, setRecipient] = useState<string>('');
@@ -153,146 +157,30 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
       
       console.log('✅ Privy is authenticated');
       
-      // Get the connected wallet from Privy
-      const connectedWallets = privy.user.linkedAccounts?.filter(
-        account => account.type === 'wallet'
-      );
-      
-      console.log('🔍 Connected wallets:', {
-        count: connectedWallets?.length || 0,
-        wallets: connectedWallets || 'none'
-      });
-      
-      if (!connectedWallets || connectedWallets.length === 0) {
-        console.log('❌ No connected wallets found');
-        throw new Error('No wallet connected. Please connect a wallet first.');
-      }
-      
-      // For this improved approach, we'll try to access embedded wallets directly
-      console.log('🔍 Checking for embedded wallets in privy.user:', !!privy.user?.wallet);
-      
-      // Get wallet in order of preference: embedded wallet first, then connected wallets
-      let selectedWallet;
-      let provider;
-      let signer;
-      
-      if (privy.user?.wallet) {
-        // Use the embedded wallet if available
-        selectedWallet = privy.user.wallet;
-        console.log('✅ Using Privy embedded wallet:', selectedWallet);
-        
-        try {
-          // Create a direct provider to Base chain for read operations
-          console.log('📡 Creating Base chain provider...');
-          const baseProvider = new ethers.providers.JsonRpcProvider(
-            import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org',
-            { chainId: 8453, name: 'Base' }
-          );
-          console.log('✅ Base chain provider created');
-          
-          // Create a special proxy signer that directly uses Privy's methods
-          console.log('🔧 Creating direct transaction sender with Base provider...');
-          signer = new ethers.VoidSigner(selectedWallet.address, baseProvider);
-          
-          // Override the sendTransaction method to use Privy's sendTransaction
-          const originalSendTransaction = signer.sendTransaction.bind(signer);
-          signer.sendTransaction = async (tx) => {
-            console.log('📤 Direct transaction request:', tx);
-            
-            // Format the transaction for Privy
-            const transaction = {
-              to: tx.to as string,
-              value: tx.value ? tx.value.toString() : undefined,
-              data: tx.data as string,
-              // Base chain settings
-              chainId: 'eip155:8453'
-            };
-            
-            console.log('📤 Sending transaction via privy.sendTransaction:', transaction);
-            
-            // Use Privy's sendTransaction directly with the embedded wallet
-            const result = await privy.sendTransaction({
-              transaction,
-              wallet: 'embedded'  // This should trigger the embedded wallet UI
-            });
-            
-            console.log('✅ Transaction result:', result);
-            
-            // Create a transaction response object compatible with ethers.js
-            return {
-              hash: result.hash,
-              wait: async () => baseProvider.waitForTransaction(result.hash),
-              ...result
-            };
-          };
-          
-          console.log('✅ Custom signer ready for transactions');
-        } catch (error) {
-          console.error('❌ Error setting up embedded wallet signer:', error);
-          throw error;
-        }
-      } else if (connectedWallets.length > 0) {
-        // Use the first connected wallet
-        selectedWallet = connectedWallets[0];
-        console.log('✅ Using connected wallet:', selectedWallet);
-        
-        try {
-          // For connected wallets, use the standard Privy method
-          console.log('📡 Connecting to wallet using privy.connectWallet...');
-          provider = await privy.connectWallet(selectedWallet.id);
-          console.log('✅ Connected to wallet, provider:', provider ? 'available' : 'null');
-          
-          if (!provider) {
-            throw new Error('Could not get provider from connected wallet');
-          }
-          
-          // Create an ethers provider
-          const ethersProvider = new ethers.providers.Web3Provider(provider);
-          console.log('✅ Created ethers provider');
-          
-          // Get signer
-          signer = ethersProvider.getSigner();
-          console.log('✅ Got signer from provider');
-        } catch (error) {
-          console.error('❌ Error setting up connected wallet:', error);
-          throw error;
-        }
-      } else {
-        console.error('❌ No wallets available');
-        throw new Error('No wallet available. Please connect a wallet first.');
-      }
-      
-      console.log('✅ Signer created successfully');
-      
-      if (!signer) {
-        throw new Error('Could not get signer from wallet.');
-      }
-      
-      console.log('Getting ready to send transaction with:', {
-        user: privy.user ? 'available' : 'null',
-        wallet: selectedWallet?.address,
-        provider: provider ? 'available' : 'null',
-        signer: signer ? 'available' : 'null',
-        selectedAsset,
-        recipient,
-        amount,
-        gasSpeed
-      });
-      
       // Get gas multiplier based on selected speed
       const gasMultiplier = GAS_OPTIONS.find(option => option.name === gasSpeed)?.multiplier || 1.0;
       console.log('⚙️ Using gas multiplier:', gasMultiplier);
       
-      // Get the transaction hash
-      let txHash;
+      // Prepare transaction based on asset type
       if (selectedAsset === 'ETH') {
         // Sending ETH
         console.log(`📤 Preparing to send ${amount} ETH to ${recipient}`);
-        console.log('📤 Calling sendTransaction with custom signer...');
+        
+        // Convert amount to wei
+        const amountWei = ethers.utils.parseEther(amount);
+        console.log('📤 Amount in wei:', amountWei.toString());
         
         try {
-          txHash = await sendTransaction(signer, recipient, amount, gasMultiplier);
+          // Use the proper useSendTransaction hook method
+          console.log('📤 Sending ETH with useSendTransaction()...');
+          const result = await sendTransaction({
+            to: recipient,
+            value: amountWei.toString()
+          });
+          
+          const txHash = result.hash;
           console.log('✅ ETH transaction successful, hash:', txHash);
+          setTxHash(txHash);
         } catch (error) {
           console.error('❌ ETH transaction failed:', error);
           throw error;
@@ -310,19 +198,38 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
         
         const decimals = SUPPORTED_ASSETS.find(a => a.symbol === selectedAsset)?.decimals || 18;
         console.log(`📤 Sending ${amount} ${selectedAsset} (decimals: ${decimals}) to ${recipient}`);
-        console.log('📤 Calling sendTokens with custom signer...');
         
         try {
-          txHash = await sendTokens(signer, tokenAddress, recipient, amount, decimals, gasMultiplier);
+          // Convert amount to token units
+          const amountUnits = ethers.utils.parseUnits(amount, decimals);
+          console.log('📤 Amount in token units:', amountUnits.toString());
+          
+          // Create token interface
+          const erc20Interface = new ethers.utils.Interface([
+            'function transfer(address to, uint256 amount) returns (bool)'
+          ]);
+          
+          // Encode transfer function data
+          const data = erc20Interface.encodeFunctionData('transfer', [
+            recipient, 
+            amountUnits
+          ]);
+          
+          // Use the proper useSendTransaction hook method
+          console.log('📤 Sending token transaction with useSendTransaction()...');
+          const result = await sendTransaction({
+            to: tokenAddress,
+            data
+          });
+          
+          const txHash = result.hash;
           console.log('✅ Token transaction successful, hash:', txHash);
+          setTxHash(txHash);
         } catch (error) {
           console.error('❌ Token transaction failed:', error);
           throw error;
         }
       }
-      
-      console.log('✅ Transaction successful with hash:', txHash);
-      setTxHash(txHash);
       
       // Refresh assets after successful transaction
       refreshAssets();
@@ -334,7 +241,6 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
         setTxHash(null);
         onClose();
       }, 5000);
-      
     } catch (err) {
       console.error('Transaction failed:', err);
       

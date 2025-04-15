@@ -1,6 +1,12 @@
 
 ✅ Add a "get Toby" button that gives you 10 toby an hour
-Add a Send button 
+✅ Add a Send button 
+✅ Fix Send Button (fixed with proper Privy useSendTransaction hook implementation)
 Figure out how to host outside of localhost to share with friends 
+Add one time gas button
+Add UI indication of gas speed choice impact (Slow: 0.8x, Normal: 1x, Fast: 1.5x multiplier)
 Add a swap page
 Find a way to host this indefinitely easily 
+See if Privy has a gloabal onboarding partner and create a "buy $5 worth of Eth" button 
+Create a Social media buttong that populates "hey i'm starting my crypto journey, can someone lend me a few dollars of Eth on Base for gas?" then it posts their address. 
+Create a myster button that unlocks and changes with an AI agent
