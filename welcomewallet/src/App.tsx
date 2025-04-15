@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PrivyProvider, usePrivy } from '@privy-io/react-auth';
+import { base } from 'viem/chains';
 import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
 import './index.css';
@@ -50,7 +51,9 @@ const App: React.FC = () => {
         },
         embeddedWallets: {
           createOnLogin: 'users-without-wallets'
-        }
+        },
+        defaultChain: base,
+        supportedChains: [base]
       }}
     >
       <div className="App min-h-screen bg-welcome-bg text-white">
