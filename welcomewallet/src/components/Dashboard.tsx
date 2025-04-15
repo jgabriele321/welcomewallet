@@ -3,6 +3,7 @@ import Header from './Header';
 import AssetList from './AssetList';
 import ChatBox from './ChatBox';
 import GetTobyButton from './GetTobyButton';
+import GetGasButton from './GetGasButton';
 
 const Dashboard: React.FC = () => {
   return (
@@ -18,7 +19,10 @@ const Dashboard: React.FC = () => {
             <p className="text-gray-300 mb-4">
               Welcome! Click below to receive Toby tokens from our community faucet.
             </p>
-            <GetTobyButton />
+            <div className="flex justify-between">
+              <GetTobyButton />
+              <GetGasButton />
+            </div>
           </div>
           
           <AssetList />

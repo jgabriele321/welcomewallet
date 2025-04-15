@@ -3,7 +3,7 @@
 ✅ Add a Send button 
 ✅ Fix Send Button (fixed with proper Privy useSendTransaction hook implementation)
 ✅ Set up hosting via Vercel (https://welcomewallet.vercel.app) 
-Add one time gas button with limits that can be reset
+✅ Add one time gas button with limits that can be reset
 Optimize for Mobile (improve UI for phone screens)
 ✅ Add UI indication of gas speed choice impact (Slow/Cheapest, Normal/Standard, Fast/Priority)
 Add a swap page (enable swapping between ETH, USDC, and TOBY)
