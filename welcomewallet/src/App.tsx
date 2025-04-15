@@ -4,30 +4,8 @@ import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
 import './index.css';
 
-// Base chain configuration
-const baseChainConfig = {
-  id: 8453,
-  name: 'Base',
-  rpcUrls: {
-    default: {
-      http: [import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org'],
-    },
-    public: {
-      http: ['https://mainnet.base.org'],
-    },
-  },
-  nativeCurrency: {
-    name: 'Ethereum',
-    symbol: 'ETH',
-    decimals: 18,
-  },
-  blockExplorers: {
-    default: {
-      name: 'BaseScan',
-      url: 'https://basescan.org',
-    },
-  },
-};
+// Define the CAIP-2 chain ID for Base
+const BASE_CHAIN_ID = 'eip155:8453';
 
 // AppContent component to handle authentication state
 const AppContent: React.FC = () => {
@@ -73,18 +51,9 @@ const App: React.FC = () => {
           logo: '/logo.svg'
         },
         embeddedWallets: {
-          createOnLogin: 'users-without-wallets'
-        },
-        defaultChain: {
-          id: 8453,
-          name: 'Base'
-        },
-        supportedChains: [
-          {
-            id: 8453,
-            name: 'Base'
-          }
-        ]
+          createOnLogin: 'users-without-wallets',
+          noPromptOnSignature: true
+        }
       }}
     >
       <div className="App min-h-screen bg-welcome-bg text-white">
