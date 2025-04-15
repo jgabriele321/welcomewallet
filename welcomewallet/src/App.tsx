@@ -48,12 +48,12 @@ const App: React.FC = () => {
           logo: '/logo.svg'
         },
         embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
-          chains: {
-            defaultChain: 'eip155:8453', // Base chain ID in CAIP-2 format
-            supportedChains: ['eip155:8453'], // Only support Base
-          },
+          createOnLogin: 'users-without-wallets'
         },
+        // Set Base as the default chain
+        defaultChain: base,
+        // Only support Base chain
+        supportedChains: [base]
       }}
     >
       <div className="App min-h-screen bg-welcome-bg text-white">

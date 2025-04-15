@@ -41,7 +41,7 @@ export const getBaseProvider = (): ethers.providers.JsonRpcProvider => {
   const provider = new ethers.providers.JsonRpcProvider(baseRpcUrl, {
     chainId: CHAIN_IDS.BASE,
     name: 'Base',
-    ensAddress: null  // Base doesn't use ENS
+    ensAddress: undefined  // Base doesn't use ENS
   });
   
   // Log the network to verify
@@ -243,7 +243,7 @@ export const sendTransaction = async (
     console.log('🔷 Transaction confirmed! Block:', receipt.blockNumber);
     
     return tx.hash;
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error sending ETH:', error);
     
     // Additional error details
@@ -337,7 +337,7 @@ export const sendTokens = async (
     console.log('🔶 Transaction confirmed! Block:', receipt.blockNumber);
     
     return tx.hash;
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error sending tokens:', error);
     
     // Additional error details
