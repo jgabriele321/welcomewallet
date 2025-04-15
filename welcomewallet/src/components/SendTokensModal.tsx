@@ -209,8 +209,7 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
           const result = await sendTransaction({
             to: recipient,
             value: amountWei.toString(),
-            gasLimit: `0x${adjustedGasLimit.toString(16)}`, // Convert to hex string
-            chainId: 'eip155:8453' // Explicitly specify Base chain
+            gasLimit: `0x${adjustedGasLimit.toString(16)}` // Convert to hex string
           });
           
           const txHash = result.hash;
@@ -255,8 +254,7 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
           const result = await sendTransaction({
             to: tokenAddress,
             data,
-            gasLimit: `0x${adjustedGasLimit.toString(16)}`, // Convert to hex string
-            chainId: 'eip155:8453' // Explicitly specify Base chain
+            gasLimit: `0x${adjustedGasLimit.toString(16)}` // Convert to hex string
           });
           
           const txHash = result.hash;

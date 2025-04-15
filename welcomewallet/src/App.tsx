@@ -4,8 +4,6 @@ import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
 import './index.css';
 
-// Define the CAIP-2 chain ID for Base
-const BASE_CHAIN_ID = 'eip155:8453';
 
 // AppContent component to handle authentication state
 const AppContent: React.FC = () => {
@@ -51,8 +49,7 @@ const App: React.FC = () => {
           logo: '/logo.svg'
         },
         embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
-          noPromptOnSignature: true
+          createOnLogin: 'users-without-wallets'
         }
       }}
     >
