@@ -43,108 +43,98 @@ VITE_GROK_API_ENDPOINT=https://api.x.ai/v1/chat/completions
 
 ## Privy Wallet Integration Fix
 
-### Current Issue
-The SendTokensModal is currently failing with `wallet.getProvider is not a function`, followed by a wallet connect popup even though the wallet is already connected. This occurs because we're incorrectly trying to access the Privy wallet provider.
+### Resolved Privy Wallet Issues
 
-### Solution 1: Use Base Chain RPC Provider with Correct Signing
+We've overcome two major issues with the Privy integration:
 
-This solution avoids the need to get a provider from the wallet directly, instead using the Base chain RPC provider and only using Privy for signing transactions.
+1. **Transaction Creation Instead of Token Transfer**: 
+   Originally, our send functionality was creating new contracts rather than sending tokens as intended.
 
-```typescript
-// 1. Get the wallet address from the user object
-const walletAddress = wallet.address;
+2. **Vercel Deployment TypeScript Errors**:
+   Various TypeScript errors were encountered when deploying to Vercel, related to chain configuration.
 
-// 2. Create a provider using the Base chain RPC URL
-const provider = new ethers.providers.JsonRpcProvider(import.meta.env.VITE_BASE_RPC_URL);
+### Correct Solution: Using Privy's useSendTransaction Hook
 
-// 3. Create a custom signer that uses the provider for read operations
-// and the Privy wallet for signing
-const customSigner = {
-  getAddress: async () => walletAddress,
-  signMessage: async (message) => {
-    // Use Privy's signMessage function
-    return await privy.signMessage({
-      message,
-      walletId: wallet.id
-    });
-  },
-  sendTransaction: async (transaction) => {
-    // Use Privy's sendTransaction function
-    const tx = await privy.sendTransaction({
-      transaction,
-      walletId: wallet.id
-    });
-    return {
-      hash: tx.hash,
-      wait: async () => provider.waitForTransaction(tx.hash)
-    };
-  },
-  provider: provider
-};
-
-// 4. Use this custom signer for your transaction functions
-const txHash = await sendTransaction(customSigner, recipient, amount, gasMultiplier);
-```
-
-### Solution 2: Use PrivyProvider with usePrivyWallets Hook
-
-This solution utilizes Privy's dedicated wallet hooks for a more integrated experience:
+The solution we implemented uses Privy's official hooks and chain configuration:
 
 ```typescript
-// 1. Add the usePrivyWallets hook to your component
-const { wallet: embeddedWallet, ready: walletReady, connect } = usePrivyWallets();
+// 1. Import chain definition from viem/chains
+import { base } from 'viem/chains';
 
-// 2. Check if the wallet is ready before using it
-useEffect(() => {
-  const initWallet = async () => {
-    if (walletReady && embeddedWallet) {
-      // The wallet is ready to use
-      console.log("Wallet is ready:", embeddedWallet);
-    } else if (privy.authenticated && !embeddedWallet) {
-      // Need to create or connect to a wallet
-      await connect();
-    }
-  };
-  
-  initWallet();
-}, [walletReady, embeddedWallet, privy.authenticated]);
+// 2. Configure PrivyProvider with proper chain setup
+<PrivyProvider
+  appId={import.meta.env.VITE_PRIVY_APP_ID}
+  config={{
+    loginMethods: ['email', 'wallet'],
+    appearance: {
+      theme: 'dark',
+      accentColor: '#8A2BE2',
+      logo: '/logo.svg'
+    },
+    embeddedWallets: {
+      createOnLogin: 'users-without-wallets'
+    },
+    defaultChain: base,
+    supportedChains: [base]
+  }}
+>
 
-// 3. When sending a transaction, use the embedded wallet's provider
-const handleSend = async () => {
-  if (!embeddedWallet) {
-    throw new Error("No wallet available");
-  }
-  
-  // Get the provider from the embedded wallet
-  const provider = await embeddedWallet.getEthereumProvider();
-  
-  // Create an ethers provider with it
-  const ethersProvider = new ethers.providers.Web3Provider(provider);
-  
-  // Get signer and send transaction
-  const signer = ethersProvider.getSigner();
-  const txHash = await sendTransaction(signer, recipient, amount, gasMultiplier);
-};
+// 3. In your component, use the useSendTransaction hook
+import { useSendTransaction } from '@privy-io/react-auth';
+
+const { sendTransaction } = useSendTransaction();
+
+// 4. Send ETH transaction with explicit gas settings
+const result = await sendTransaction({
+  to: recipient,
+  value: amountWei.toString(),
+  gasLimit: `0x${adjustedGasLimit.toString(16)}`
+});
+
+// 5. For token transfers, create the data field manually
+const erc20Interface = new ethers.utils.Interface([
+  'function transfer(address to, uint256 amount) returns (bool)'
+]);
+
+const data = erc20Interface.encodeFunctionData('transfer', [
+  recipient, 
+  amountUnits
+]);
+
+const result = await sendTransaction({
+  to: tokenAddress,
+  data,
+  gasLimit: `0x${adjustedGasLimit.toString(16)}`
+});
 ```
 
-### Implementation Notes
+### Key Learnings for Privy Integration
 
-1. **Solution 1 advantages**:
-   - More reliable as it doesn't depend on browser wallet connections
-   - Prevents duplicate wallet popups
-   - Works with both embedded and connected wallets
-   - Simpler implementation
+1. **Proper Chain Configuration**:
+   - Always import chains from `viem/chains`
+   - Configure `defaultChain` and `supportedChains` in PrivyProvider
+   - This ensures all wallet operations use the right chain
 
-2. **Solution 2 advantages**:
-   - More integrated with Privy's wallet system
-   - Better handling of wallet state and connections
-   - More consistent with Privy's recommended approach
+2. **Transaction Handling**:
+   - Use the `useSendTransaction` hook directly  
+   - Don't try to manually construct signers or providers
+   - For token transfers, construct the data field manually with ethers.js
 
-3. **Debugging tips**:
-   - Add console logs for wallet type, state, and readiness
-   - Log all steps of provider creation and transaction signing
-   - Check the wallet address matches in all places
-   - Verify that transactions are being signed correctly with the expected wallet
+3. **Gas Configuration**:
+   - Set explicit `gasLimit` in hexadecimal format
+   - Use appropriate base limits (21,000 for ETH, ~100,000 for tokens)
+   - Adjust gas limit based on transaction priority
+
+4. **Vercel Deployment Considerations**:
+   - Be strict about TypeScript types
+   - Don't use string chainIds with sendTransaction
+   - Don't use properties not defined in TypeScript definitions
+   - All environment variables must be added in Vercel settings
+
+5. **Debugging Approach**:
+   - Add detailed console logs throughout the transaction process
+   - Check chain configuration and wallet connection state
+   - Verify transaction parameters before sending
 
 ## Development Workflow
 1. Run the development server: `cd welcomewallet && npm run dev`
@@ -153,11 +143,12 @@ const handleSend = async () => {
 4. Check console for detailed debug logs when testing functionality
 
 ## Todo List
-- Fix Send Button functionality
-- Figure out how to host outside of localhost to share with friends
+- ✅ Fix Send Button functionality
+- ✅ Deploy on Vercel for mobile testing
+- Optimize for Mobile
 - Add a swap page
-- Find a way to host this indefinitely easily
-- Integrate with Privy's global onboarding partner to create a "buy $5 worth of ETH" button
+- Add one-time gas button with limits that can be reset
+- Integrate with Privy's global onboarding partner to create a "buy crypto" button
 - Add social media functionality for requesting ETH
 - Create a mystery button that unlocks and changes with an AI agent
 

@@ -2,11 +2,12 @@
 ✅ Add a "get Toby" button that gives you 10 toby an hour
 ✅ Add a Send button 
 ✅ Fix Send Button (fixed with proper Privy useSendTransaction hook implementation)
-Figure out how to host outside of localhost to share with friends 
-Add one time gas button
+✅ Set up hosting via Vercel (https://welcomewallet.vercel.app) 
+Add one time gas button with limits that can be reset
+Optimize for Mobile (improve UI for phone screens)
 ✅ Add UI indication of gas speed choice impact (Slow/Cheapest, Normal/Standard, Fast/Priority)
-Add a swap page
-Find a way to host this indefinitely easily 
-See if Privy has a gloabal onboarding partner and create a "buy $5 worth of Eth" button 
-Create a Social media buttong that populates "hey i'm starting my crypto journey, can someone lend me a few dollars of Eth on Base for gas?" then it posts their address. 
-Create a myster button that unlocks and changes with an AI agent
+Add a swap page (enable swapping between ETH, USDC, and TOBY)
+See if Privy has a global onboarding partner and create a "buy crypto" button 
+Create a Social media button that posts "Hey, I'm starting my crypto journey, can someone send me a few dollars of ETH on Base for gas?" with wallet address
+Create a mystery button that unlocks and changes with an AI agent
+Add more robust error handling for transactions
