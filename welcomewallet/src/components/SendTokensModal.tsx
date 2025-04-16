@@ -119,7 +119,7 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose, init
       refreshAssets();
       console.log('Available assets in SendTokensModal:', assets);
     }
-  }, [isOpen, walletAddress, refreshAssets]);
+  }, [isOpen, walletAddress, refreshAssets, assets]);
   
   // Transaction state
   const [isLoading, setIsLoading] = useState<boolean>(false);

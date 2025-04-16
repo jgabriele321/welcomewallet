@@ -257,7 +257,7 @@ export const calculateUsdValue = (balance: string, price: number): string => {
     const balanceNum = parseFloat(balance);
     const usdValue = balanceNum * price;
     return usdValue.toFixed(2);
-  } catch (error) {
+  } catch (_) {
     return '0.00';
   }
 };
