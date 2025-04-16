@@ -130,11 +130,11 @@ const GetTobyButton: React.FC = () => {
   };
 
   return (
-    <div className="mt-4">
+    <div className="mt-2 flex flex-col items-center">
       <button
         onClick={handleGetToby}
         disabled={loading || !walletAddress || !canClaim}
-        className={`px-4 py-2 rounded-lg font-medium ${
+        className={`w-full px-2 py-1.5 text-sm rounded-lg font-medium ${
           !canClaim
             ? 'bg-gray-500 cursor-not-allowed'
             : loading 
@@ -145,27 +145,27 @@ const GetTobyButton: React.FC = () => {
         } text-white transition-colors`}
       >
         {!canClaim 
-          ? `Next claim in ${timeRemaining}`
+          ? `Wait ${timeRemaining}`
           : loading 
-            ? 'Getting Toby...' 
+            ? 'Loading...' 
             : success 
-              ? 'Success! +10 Toby' 
-              : 'Get 10 Toby'
+              ? '+10 Toby!' 
+              : 'Get Toby'
         }
       </button>
       
       {error && (
-        <p className="mt-2 text-red-500 text-sm">{error}</p>
+        <p className="mt-1 text-red-500 text-xs">{error}</p>
       )}
       
       {txHash && (
-        <p className="mt-2 text-green-500 text-xs">
-          Transaction: {txHash.substring(0, 10)}...{txHash.substring(txHash.length - 8)}
+        <p className="mt-1 text-green-500 text-xs">
+          Tx: {txHash.substring(0, 6)}...{txHash.substring(txHash.length - 4)}
         </p>
       )}
       
-      <p className="mt-2 text-sm text-gray-400">
-        Get 10 Toby tokens per hour from the Welcome Wallet faucet
+      <p className="mt-1 text-xs text-gray-400">
+        10 tokens per hour
       </p>
     </div>
   );

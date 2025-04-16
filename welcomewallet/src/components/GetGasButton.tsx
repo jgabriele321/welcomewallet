@@ -127,11 +127,11 @@ const GetGasButton: React.FC = () => {
   }
 
   return (
-    <div className="mt-4">
-      <div className="flex flex-col items-center">
+    <div className="mt-2 flex flex-col items-center">
+      <div className="flex flex-col items-center w-full">
         {/* Gas tank icon - simple Unicode placeholder for now */}
         <div 
-          className="text-2xl mb-1 cursor-pointer" 
+          className="text-xl mb-0.5 cursor-pointer" 
           onClick={handleAdminClick}
         >
           ⛽
@@ -140,7 +140,7 @@ const GetGasButton: React.FC = () => {
         <button
           onClick={handleGetGas}
           disabled={loading || !walletAddress || hasReceived || globalLimitReached}
-          className={`px-4 py-2 rounded-lg font-medium ${
+          className={`w-full px-2 py-1.5 text-sm rounded-lg font-medium ${
             loading 
               ? 'bg-gray-400 cursor-not-allowed' 
               : success
@@ -151,38 +151,38 @@ const GetGasButton: React.FC = () => {
           } text-white transition-colors`}
         >
           {loading 
-            ? 'Getting Gas...' 
+            ? 'Loading...' 
             : success 
-              ? 'Success! +0.0005 ETH' 
+              ? '+0.0005 ETH!' 
               : 'Get Gas'
           }
         </button>
       </div>
       
       {error && (
-        <p className="mt-2 text-red-500 text-sm">{error}</p>
+        <p className="mt-1 text-red-500 text-xs">{error}</p>
       )}
       
       {txHash && (
-        <p className="mt-2 text-green-500 text-xs">
-          Transaction: {txHash.substring(0, 10)}...{txHash.substring(txHash.length - 8)}
+        <p className="mt-1 text-green-500 text-xs">
+          Tx: {txHash.substring(0, 6)}...{txHash.substring(txHash.length - 4)}
         </p>
       )}
       
-      <p className="mt-2 text-sm text-gray-400">
-        Get 0.0005 ETH for gas on Base
+      <p className="mt-1 text-xs text-gray-400">
+        0.0005 ETH per wallet
       </p>
 
       {/* Admin panel */}
       {adminMode && (
-        <div className="mt-4 p-3 border border-gray-500 rounded">
-          <h3 className="text-sm font-bold mb-2">Admin Controls</h3>
-          <p className="text-xs text-gray-400 mb-2">
-            Total distributed: {totalDistributed} ETH (Limit: 0.005 ETH)
+        <div className="mt-2 p-2 border border-gray-500 rounded text-center">
+          <h3 className="text-xs font-bold mb-1">Admin Controls</h3>
+          <p className="text-xs text-gray-400 mb-1">
+            Total: {totalDistributed} ETH (Limit: 0.005)
           </p>
           <button
             onClick={handleResetLimit}
-            className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
+            className="px-2 py-0.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
           >
             Reset Gas Limit
           </button>

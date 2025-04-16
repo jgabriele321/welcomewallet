@@ -16,14 +16,14 @@ const Dashboard: React.FC = () => {
           
           <div className="bg-gray-800 rounded-lg p-4 mb-6">
             <h2 className="text-xl font-semibold mb-2">Faucets</h2>
-            <p className="text-gray-300 mb-4">
+            <p className="text-gray-300 mb-3">
               Welcome! Get tokens and gas from our community faucets.
             </p>
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-              <div className="w-full sm:w-auto">
+            <div className="flex flex-row justify-center items-center gap-3">
+              <div className="w-1/2">
                 <GetTobyButton />
               </div>
-              <div className="w-full sm:w-auto">
+              <div className="w-1/2">
                 <GetGasButton />
               </div>
             </div>
