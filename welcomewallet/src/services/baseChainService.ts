@@ -2,6 +2,7 @@
  * Service for interacting with the Base blockchain
  */
 import { ethers } from 'ethers';
+import { getTokenPrice, calculateUsdValue } from './priceService';
 
 // ERC20 token ABI (minimal ABI for balance checking and transfers)
 const ERC20_ABI = [
@@ -27,6 +28,8 @@ export interface Asset {
   symbol: string;
   balance: string;
   icon: string;
+  usdValue?: string; // USD value of the asset
+  priceUsd?: number; // Price per token in USD
 }
 
 // Global provider instance to reuse across requests
@@ -226,25 +229,43 @@ export const getAllTokenBalances = async (
       tobyBalance
     });
     
+    // Get token prices in parallel
+    const [ethPrice, usdcPrice, tobyPrice] = await Promise.all([
+      getTokenPrice('ETH'),
+      getTokenPrice('USDC'),
+      getTokenPrice('TOBY'),
+    ]);
+    
+    // Calculate USD values
+    const ethUsdValue = calculateUsdValue(ethBalance, ethPrice);
+    const usdcUsdValue = calculateUsdValue(usdcBalance.balance, usdcPrice);
+    const tobyUsdValue = calculateUsdValue(tobyBalance.balance, tobyPrice);
+    
     const result = [
       {
         symbol: 'ETH',
         balance: ethBalance,
         icon: '⬨', // Ethereum symbol
+        usdValue: ethUsdValue,
+        priceUsd: ethPrice
       },
       {
         symbol: 'USDC', // Hardcode to ensure consistency
         balance: usdcBalance.balance,
         icon: '$', // Dollar symbol for USDC
+        usdValue: usdcUsdValue,
+        priceUsd: usdcPrice
       },
       {
         symbol: 'TOBY', // Hardcode to ensure consistency
         balance: tobyBalance.balance,
         icon: '🔹', // Generic token symbol for TOBY
+        usdValue: tobyUsdValue,
+        priceUsd: tobyPrice
       },
     ];
     
-    console.log('Final assets returned:', result);
+    console.log('Final assets returned with USD values:', result);
     
     // Update the cache
     balanceCache = {

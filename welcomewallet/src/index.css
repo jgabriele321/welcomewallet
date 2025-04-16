@@ -60,6 +60,11 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
 
+  .asset-item:active {
+    transform: translateY(0);
+    box-shadow: none;
+  }
+
   /* Wallet address display */
   .wallet-address {
     font-family: monospace;
@@ -69,5 +74,67 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  /* Mobile optimization */
+  @media (max-width: 640px) {
+    /* Larger touch targets for mobile */
+    button, 
+    input, 
+    select, 
+    .asset-item,
+    .wallet-address {
+      min-height: 44px;
+    }
+
+    /* Prevent touch callout/highlight on iOS */
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Adjust font sizes for mobile */
+    h1 {
+      @apply text-xl;
+    }
+
+    h2 {
+      @apply text-lg;
+    }
+
+    /* Optimize forms for mobile */
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    /* Full width buttons on mobile */
+    .wallet-address {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Improved scrolling */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
   }
 }

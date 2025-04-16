@@ -10,18 +10,22 @@ const Dashboard: React.FC = () => {
     <div className="flex flex-col min-h-screen">
       <Header />
       
-      <main className="flex-1 p-4 pb-64">
+      <main className="flex-1 p-4 pb-64 overflow-x-hidden">
         <div className="max-w-screen-lg mx-auto">
-          <h1 className="text-2xl font-bold mb-6 text-center">Welcome to Your Crypto Hub</h1>
+          <h1 className="text-2xl font-bold mb-4 md:mb-6 text-center">Welcome to Your Crypto Hub</h1>
           
           <div className="bg-gray-800 rounded-lg p-4 mb-6">
-            <h2 className="text-xl font-semibold mb-2">Toby Token Faucet</h2>
+            <h2 className="text-xl font-semibold mb-2">Faucets</h2>
             <p className="text-gray-300 mb-4">
-              Welcome! Click below to receive Toby tokens from our community faucet.
+              Welcome! Get tokens and gas from our community faucets.
             </p>
-            <div className="flex justify-between">
-              <GetTobyButton />
-              <GetGasButton />
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="w-full sm:w-auto">
+                <GetTobyButton />
+              </div>
+              <div className="w-full sm:w-auto">
+                <GetGasButton />
+              </div>
             </div>
           </div>
           

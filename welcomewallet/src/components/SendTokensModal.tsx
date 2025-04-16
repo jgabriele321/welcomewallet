@@ -9,6 +9,7 @@ import { getTokenAddressBySymbol } from '../services/baseChainService';
 interface SendTokensModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialAsset?: string | null; // Optional initial asset selection
 }
 
 // Supported assets for sending (all on Base chain)
@@ -56,7 +57,7 @@ const GAS_OPTIONS = [
   },
 ];
 
-const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) => {
+const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose, initialAsset }) => {
   const { walletAddress } = useWallet();
   const { assets, refreshAssets } = useAssets(walletAddress || '');
   const privy = usePrivy();
@@ -67,6 +68,20 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
   const [amount, setAmount] = useState<string>('');
   const [selectedAsset, setSelectedAsset] = useState<string>(SUPPORTED_ASSETS[0].symbol);
   const [gasSpeed, setGasSpeed] = useState<string>('Normal');
+  
+  // Set the initial asset when the modal opens or when initialAsset changes
+  useEffect(() => {
+    if (isOpen && initialAsset) {
+      // Find the asset in SUPPORTED_ASSETS (case-insensitive)
+      const matchingAsset = SUPPORTED_ASSETS.find(
+        asset => asset.symbol.toUpperCase() === initialAsset.toUpperCase()
+      );
+      
+      if (matchingAsset) {
+        setSelectedAsset(matchingAsset.symbol);
+      }
+    }
+  }, [isOpen, initialAsset]);
   
   // When the modal opens, refresh asset balances
   useEffect(() => {
@@ -301,15 +316,18 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full">
-        <div className="flex justify-between items-center mb-4">
+    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4 md:p-0">
+      <div className="bg-gray-800 rounded-lg p-4 md:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4 sticky top-0 bg-gray-800 pb-2">
           <h2 className="text-xl font-semibold">Send Tokens</h2>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
+            className="text-gray-400 hover:text-white min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="Close modal"
           >
-            ✕
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
         
@@ -319,34 +337,39 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
             <label className="block text-sm font-medium text-gray-400 mb-1">
               From
             </label>
-            <div className="bg-gray-700 rounded p-2 text-gray-300">
+            <div className="bg-gray-700 rounded p-3 text-gray-300 min-h-[44px] flex items-center">
               {formatAddress(walletAddress)}
             </div>
           </div>
           
           {/* To address */}
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">
+            <label className="block text-sm font-medium text-gray-400 mb-1" htmlFor="recipient-address">
               To
             </label>
             <input
+              id="recipient-address"
               type="text"
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
               placeholder="0x..."
-              className="w-full bg-gray-700 rounded p-2 text-white"
+              className="w-full bg-gray-700 rounded p-3 text-white min-h-[44px]"
+              autoComplete="off"
+              spellCheck="false"
             />
           </div>
           
           {/* Asset selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">
+            <label className="block text-sm font-medium text-gray-400 mb-1" htmlFor="asset-select">
               Asset
             </label>
             <select
+              id="asset-select"
               value={selectedAsset}
               onChange={(e) => setSelectedAsset(e.target.value)}
-              className="w-full bg-gray-700 rounded p-2 text-white"
+              className="w-full bg-gray-700 rounded p-3 text-white min-h-[44px] appearance-none"
+              style={{ backgroundImage: "url(\"data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E\") ", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.7rem top 50%", backgroundSize: "0.65rem auto" }}
             >
               {SUPPORTED_ASSETS.map((asset) => (
                 <option key={asset.symbol} value={asset.symbol}>
@@ -356,26 +379,50 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
             </select>
           </div>
           
-          {/* Amount */}
+          {/* Amount with balance display and max button */}
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">
-              Amount
-            </label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-sm font-medium text-gray-400" htmlFor="amount-input">
+                Amount
+              </label>
+              
+              <div className="text-xs text-gray-400">
+                Balance: {assets.find(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase())?.balance || '0'} {selectedAsset}
+                <button 
+                  onClick={() => {
+                    const assetBalance = assets.find(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase())?.balance || '0';
+                    setAmount(assetBalance);
+                  }}
+                  className="ml-2 text-welcome-accent underline text-xs"
+                  aria-label="Use maximum balance"
+                >
+                  Max
+                </button>
+              </div>
+            </div>
+            
             <div className="flex">
               <input
+                id="amount-input"
                 type="number"
+                inputMode="decimal"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.0"
-                className="w-full bg-gray-700 rounded-l p-2 text-white"
+                className="w-full bg-gray-700 rounded-l p-3 text-white min-h-[44px]"
               />
-              <div className="bg-gray-600 rounded-r px-3 flex items-center">
+              <div className="bg-gray-600 rounded-r px-4 flex items-center font-medium">
                 {selectedAsset}
               </div>
             </div>
-            <div className="text-xs text-gray-400 mt-1">
-              Balance: {assets.find(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase())?.balance || '0'} {selectedAsset}
-            </div>
+            
+            {/* USD value of amount (if available) */}
+            {amount && parseFloat(amount) > 0 && (
+              <div className="text-xs text-gray-400 mt-1">
+                ≈ ${(parseFloat(amount) * 
+                    (assets.find(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase())?.priceUsd || 0)).toFixed(2)} USD
+              </div>
+            )}
           </div>
           
           {/* Gas settings */}
@@ -388,14 +435,15 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
                 <button
                   key={option.name}
                   onClick={() => setGasSpeed(option.name)}
-                  className={`p-2 rounded text-center text-sm ${
+                  className={`p-3 rounded text-center text-sm min-h-[80px] ${
                     gasSpeed === option.name
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-700 text-gray-300'
                   }`}
+                  aria-label={`${option.name} transaction speed: ${option.timeEstimate}`}
                 >
-                  <div>{option.name}</div>
-                  <div className="text-xs opacity-80">{option.timeEstimate}</div>
+                  <div className="font-medium">{option.name}</div>
+                  <div className="text-xs opacity-80 mt-1">{option.timeEstimate}</div>
                   <div className="text-xs opacity-70 mt-1">
                     {option.name === 'Slow' ? 'Cheapest' : 
                      option.name === 'Fast' ? 'Highest Priority' : 
@@ -408,14 +456,16 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
           
           {/* Error message */}
           {error && (
-            <div className="text-red-500 text-sm">{error}</div>
+            <div className="text-red-500 text-sm p-3 bg-red-500 bg-opacity-10 rounded-lg">
+              {error}
+            </div>
           )}
           
           {/* Transaction hash */}
           {txHash && (
-            <div className="bg-green-800 bg-opacity-30 rounded p-2">
-              <div className="text-green-400 text-sm">Transaction sent!</div>
-              <div className="text-gray-400 text-xs overflow-hidden text-ellipsis">
+            <div className="bg-green-800 bg-opacity-30 rounded-lg p-3">
+              <div className="text-green-400 font-medium">Transaction sent!</div>
+              <div className="text-gray-400 text-xs break-all mt-1">
                 {txHash}
               </div>
             </div>
@@ -425,11 +475,12 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose }) =>
           <button
             onClick={handleSend}
             disabled={isLoading}
-            className={`w-full p-3 rounded-lg font-medium ${
+            className={`w-full p-4 rounded-lg font-medium ${
               isLoading
                 ? 'bg-gray-600 cursor-not-allowed'
                 : 'bg-blue-600 hover:bg-blue-700'
-            } text-white transition-colors`}
+            } text-white transition-colors min-h-[56px] text-lg mt-2`}
+            aria-label={isLoading ? 'Sending transaction' : 'Send transaction'}
           >
             {isLoading ? 'Sending...' : 'Send Transaction'}
           </button>
