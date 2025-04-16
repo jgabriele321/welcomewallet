@@ -2,7 +2,7 @@
  * Service for interacting with the Base blockchain
  */
 import { ethers } from 'ethers';
-import { getTokenPrice, calculateUsdValue } from './priceService';
+import { calculateUsdValue, getMultipleTokenPrices } from './priceService';
 
 // ERC20 token ABI (minimal ABI for balance checking and transfers)
 const ERC20_ABI = [
@@ -237,21 +237,19 @@ export const getAllTokenBalances = async (
       tobyBalance
     });
     
-    // Get token prices in parallel
-    const [ethPrice, btcPrice, solPrice, usdcPrice, tobyPrice] = await Promise.all([
-      getTokenPrice('ETH'),
-      getTokenPrice('BTC'),
-      getTokenPrice('SOL'),
-      getTokenPrice('USDC'),
-      getTokenPrice('TOBY'),
-    ]);
+    // Get token prices in batch for efficiency
+    console.log('Fetching token prices in batch from CoinGecko...');
+    const tokenSymbols = ['ETH', 'BTC', 'SOL', 'USDC', 'TOBY'];
+    const prices = await getMultipleTokenPrices(tokenSymbols);
+    
+    console.log('Received prices:', prices);
     
     // Calculate USD values
-    const ethUsdValue = calculateUsdValue(ethBalance, ethPrice);
-    const btcUsdValue = calculateUsdValue(btcBalance.balance, btcPrice);
-    const solUsdValue = calculateUsdValue(solBalance.balance, solPrice);
-    const usdcUsdValue = calculateUsdValue(usdcBalance.balance, usdcPrice);
-    const tobyUsdValue = calculateUsdValue(tobyBalance.balance, tobyPrice);
+    const ethUsdValue = calculateUsdValue(ethBalance, prices.ETH);
+    const btcUsdValue = calculateUsdValue(btcBalance.balance, prices.BTC);
+    const solUsdValue = calculateUsdValue(solBalance.balance, prices.SOL);
+    const usdcUsdValue = calculateUsdValue(usdcBalance.balance, prices.USDC);
+    const tobyUsdValue = calculateUsdValue(tobyBalance.balance, prices.TOBY);
     
     const result = [
       {
@@ -259,35 +257,35 @@ export const getAllTokenBalances = async (
         balance: ethBalance,
         icon: '⬨', // Ethereum symbol
         usdValue: ethUsdValue,
-        priceUsd: ethPrice
+        priceUsd: prices.ETH
       },
       {
         symbol: 'BTC', // cbBTC token
         balance: btcBalance.balance,
         icon: '₿', // Bitcoin symbol
         usdValue: btcUsdValue,
-        priceUsd: btcPrice
+        priceUsd: prices.BTC
       },
       {
         symbol: 'SOL', // uSOL token
         balance: solBalance.balance,
         icon: '◎', // Solana symbol
         usdValue: solUsdValue,
-        priceUsd: solPrice
+        priceUsd: prices.SOL
       },
       {
         symbol: 'USDC', // Hardcode to ensure consistency
         balance: usdcBalance.balance,
         icon: '$', // Dollar symbol for USDC
         usdValue: usdcUsdValue,
-        priceUsd: usdcPrice
+        priceUsd: prices.USDC
       },
       {
         symbol: 'TOBY', // Hardcode to ensure consistency
         balance: tobyBalance.balance,
         icon: '🔹', // Generic token symbol for TOBY
         usdValue: tobyUsdValue,
-        priceUsd: tobyPrice
+        priceUsd: prices.TOBY
       },
     ];
     
