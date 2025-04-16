@@ -29,12 +29,21 @@ export interface Asset {
   icon: string;
 }
 
+// Global provider instance to reuse across requests
+let cachedProvider: ethers.providers.JsonRpcProvider | null = null;
+
 /**
  * Creates an ethers provider for Base chain
  * @returns Provider for Base chain
  */
 export const getBaseProvider = (): ethers.providers.JsonRpcProvider => {
+  // Return cached provider if available to reduce instantiation overhead
+  if (cachedProvider) {
+    return cachedProvider;
+  }
+  
   // Ensure we're connecting to Base chain
+  // Use a premium RPC provider URL if available (more performant than public endpoints)
   const baseRpcUrl = import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org';
   
   // Create a provider with explicit network information for Base chain
@@ -44,10 +53,17 @@ export const getBaseProvider = (): ethers.providers.JsonRpcProvider => {
     ensAddress: undefined  // Base doesn't use ENS
   });
   
+  // Set higher polling interval to reduce network load (default is 4000ms)
+  // For faster response consider a premium provider instead of longer polling
+  provider.pollingInterval = 8000;
+  
   // Log the network to verify
   provider.getNetwork().then(network => {
     console.log('Connected to network:', network.name, 'chainId:', network.chainId);
   });
+  
+  // Cache the provider for future use
+  cachedProvider = provider;
   
   return provider;
 };
@@ -68,6 +84,35 @@ export const getEthBalance = async (address: string): Promise<string> => {
   }
 };
 
+// Cache for token contract instances
+const tokenContractCache: { [address: string]: ethers.Contract } = {};
+
+// Cache for token metadata to avoid fetching decimals and symbol repeatedly
+const tokenMetadataCache: { 
+  [address: string]: { decimals: number; symbol: string }
+} = {};
+
+// Initialize token metadata cache from localStorage if available
+try {
+  const savedMetadata = localStorage.getItem('tokenMetadataCache');
+  if (savedMetadata) {
+    const parsed = JSON.parse(savedMetadata);
+    Object.assign(tokenMetadataCache, parsed);
+    console.log('Loaded token metadata from localStorage', Object.keys(tokenMetadataCache).length, 'tokens');
+  }
+} catch (e) {
+  console.warn('Failed to load token metadata from localStorage:', e);
+}
+
+// Save token metadata to localStorage
+const saveTokenMetadata = () => {
+  try {
+    localStorage.setItem('tokenMetadataCache', JSON.stringify(tokenMetadataCache));
+  } catch (e) {
+    console.warn('Failed to save token metadata to localStorage:', e);
+  }
+};
+
 /**
  * Gets token balance for a specific token
  * @param address - Wallet address to check
@@ -79,22 +124,39 @@ export const getTokenBalance = async (
   tokenAddress: string
 ): Promise<{ balance: string; symbol: string }> => {
   try {
-    const provider = getBaseProvider();
-    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+    // Get or create token contract instance
+    let tokenContract = tokenContractCache[tokenAddress];
+    if (!tokenContract) {
+      const provider = getBaseProvider();
+      tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+      tokenContractCache[tokenAddress] = tokenContract;
+    }
     
-    const [balanceRaw, decimals, symbol] = await Promise.all([
-      tokenContract.balanceOf(address),
-      tokenContract.decimals(),
-      tokenContract.symbol(),
-    ]);
+    // Get token metadata (decimals, symbol) from cache or fetch
+    let metadata = tokenMetadataCache[tokenAddress];
+    if (!metadata) {
+      console.log(`Fetching metadata for token ${tokenAddress}`);
+      const [decimals, symbol] = await Promise.all([
+        tokenContract.decimals(),
+        tokenContract.symbol(),
+      ]);
+      
+      metadata = { decimals, symbol };
+      tokenMetadataCache[tokenAddress] = metadata;
+      
+      // Save updated metadata to localStorage
+      saveTokenMetadata();
+    }
     
-    const balance = ethers.utils.formatUnits(balanceRaw, decimals);
+    // Only fetch the balance (metadata is cached)
+    const balanceRaw = await tokenContract.balanceOf(address);
+    const balance = ethers.utils.formatUnits(balanceRaw, metadata.decimals);
     
-    console.log(`Token balance for ${tokenAddress}: ${balance} ${symbol}`);
+    console.log(`Token balance for ${tokenAddress}: ${balance} ${metadata.symbol}`);
     
     return { 
       balance, 
-      symbol 
+      symbol: metadata.symbol
     };
   } catch (error) {
     console.error(`Error getting token balance for ${tokenAddress}:`, error);
@@ -105,15 +167,44 @@ export const getTokenBalance = async (
   }
 };
 
+// Balance cache interface
+interface BalanceCache {
+  assets: Asset[];
+  timestamp: number;
+  address: string;
+}
+
+// Cache settings
+const CACHE_TTL_MS = 60000; // 1 minute cache TTL
+let balanceCache: BalanceCache | null = null;
+
 /**
  * Gets all relevant token balances for the dashboard
  * @param address - Wallet address to check
+ * @param forceRefresh - Force a refresh bypassing the cache
  * @returns Array of token balances
  */
-export const getAllTokenBalances = async (address: string): Promise<Asset[]> => {
+export const getAllTokenBalances = async (
+  address: string, 
+  forceRefresh: boolean = false
+): Promise<Asset[]> => {
   if (!address) return [];
   
+  // Check if we have a valid cache entry
+  const now = Date.now();
+  const cacheValid = balanceCache && 
+                     balanceCache.address === address &&
+                     now - balanceCache.timestamp < CACHE_TTL_MS;
+  
+  // Return cached data if valid and not forcing refresh
+  if (cacheValid && !forceRefresh) {
+    console.log('Using cached token balances from', new Date(balanceCache!.timestamp).toLocaleTimeString());
+    return balanceCache!.assets;
+  }
+  
   try {
+    console.log('Fetching fresh token balances at', new Date().toLocaleTimeString());
+    
     // Get ETH balance
     const ethBalance = await getEthBalance(address);
     
@@ -155,9 +246,23 @@ export const getAllTokenBalances = async (address: string): Promise<Asset[]> => 
     
     console.log('Final assets returned:', result);
     
+    // Update the cache
+    balanceCache = {
+      assets: result,
+      timestamp: now,
+      address
+    };
+    
     return result;
   } catch (error) {
     console.error('Error getting all token balances:', error);
+    
+    // If we have a cache, return it even if expired as fallback
+    if (balanceCache && balanceCache.address === address) {
+      console.log('Using expired cache as fallback due to error');
+      return balanceCache.assets;
+    }
+    
     return [];
   }
 };

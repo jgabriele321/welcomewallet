@@ -15,30 +15,43 @@ interface AssetState {
   lastRefreshed: string;
 }
 
+// Cache storage for initial data loading to prevent screen flicker
+const initialDataCache: { [address: string]: Asset[] } = {};
+
 /**
  * Hook for managing crypto asset balances
  * @param walletAddress - User's wallet address
  * @returns Assets state and operations
  */
 const useAssets = (walletAddress: string): AssetState => {
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  // Initialize with cached data if available to prevent loading state flickering
+  const [assets, setAssets] = useState<Asset[]>(initialDataCache[walletAddress] || []);
+  const [loading, setLoading] = useState<boolean>(initialDataCache[walletAddress] ? false : true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
   // Function to fetch all token balances
-  const fetchAssets = useCallback(async () => {
+  const fetchAssets = useCallback(async (forceRefresh: boolean = true) => {
     if (!walletAddress) {
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    // Only show loading indicator for forced refreshes or first load
+    if (forceRefresh || assets.length === 0) {
+      setLoading(true);
+    }
+    
     setError(null);
 
     try {
-      const balances = await getAllTokenBalances(walletAddress);
+      // Pass forceRefresh flag to the balance service
+      const balances = await getAllTokenBalances(walletAddress, forceRefresh);
+      
+      // Store in both state and cache
       setAssets(balances);
+      initialDataCache[walletAddress] = balances;
+      
       setLastRefreshed(new Date());
     } catch (err) {
       console.error('Error fetching assets:', err);
@@ -46,11 +59,26 @@ const useAssets = (walletAddress: string): AssetState => {
     } finally {
       setLoading(false);
     }
-  }, [walletAddress]);
+  }, [walletAddress, assets.length]);
 
   // Load assets on mount and when wallet address changes
+  // Uses the service-level cache for frequent address changes
   useEffect(() => {
-    fetchAssets();
+    // Don't force refresh on first load or address change to use cache
+    fetchAssets(false);
+    
+    // Set up auto-refresh interval (background refresh every 30 seconds)
+    const refreshInterval = setInterval(() => {
+      // Background refresh doesn't force refresh and won't show loading state
+      fetchAssets(false);
+    }, 30000);
+    
+    return () => clearInterval(refreshInterval);
+  }, [fetchAssets, walletAddress]);
+
+  // Force a refresh when explicitly requested by the user
+  const refreshAssetsForced = useCallback(async () => {
+    await fetchAssets(true);
   }, [fetchAssets]);
 
   // Format relative time since last refresh
@@ -68,7 +96,7 @@ const useAssets = (walletAddress: string): AssetState => {
     assets,
     loading,
     error,
-    refreshAssets: fetchAssets,
+    refreshAssets: refreshAssetsForced,
     lastRefreshed: getRefreshTime(),
   };
 };
