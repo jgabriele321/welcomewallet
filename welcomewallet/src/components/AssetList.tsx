@@ -20,6 +20,7 @@ const AssetList: React.FC = () => {
 
   // Open the send modal with a specific asset
   const openSendModal = (symbol: string) => {
+    console.log(`Opening send modal with asset: ${symbol}`);
     setSelectedAsset(symbol);
     setIsSendModalOpen(true);
   };
@@ -55,7 +56,12 @@ const AssetList: React.FC = () => {
           </button>
           
           <button 
-            onClick={() => setIsSendModalOpen(true)}
+            onClick={() => {
+              // Set the first non-zero balance asset as the selected asset, or ETH if none
+              const defaultAsset = assets.find(a => parseFloat(a.balance) > 0)?.symbol || 'ETH';
+              setSelectedAsset(defaultAsset);
+              setIsSendModalOpen(true);
+            }}
             disabled={!walletAddress || assets.length === 0}
             className="flex-1 sm:flex-initial flex items-center justify-center gap-1 text-sm py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[44px] min-h-[44px]"
             title="Send tokens"

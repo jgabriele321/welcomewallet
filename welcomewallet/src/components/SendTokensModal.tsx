@@ -71,17 +71,29 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose, init
   
   // Set the initial asset when the modal opens or when initialAsset changes
   useEffect(() => {
-    if (isOpen && initialAsset) {
+    if (initialAsset) {
       // Find the asset in SUPPORTED_ASSETS (case-insensitive)
       const matchingAsset = SUPPORTED_ASSETS.find(
         asset => asset.symbol.toUpperCase() === initialAsset.toUpperCase()
       );
       
       if (matchingAsset) {
+        console.log(`Setting selected asset to ${matchingAsset.symbol} from initialAsset: ${initialAsset}`);
         setSelectedAsset(matchingAsset.symbol);
       }
     }
   }, [isOpen, initialAsset]);
+  
+  // Reset the form when the modal is opened
+  useEffect(() => {
+    if (isOpen) {
+      // Don't reset selectedAsset here as it's handled by the initialAsset effect
+      setRecipient('');
+      setAmount('');
+      setError(null);
+      setTxHash(null);
+    }
+  }, [isOpen]);
   
   // When the modal opens, refresh asset balances
   useEffect(() => {
