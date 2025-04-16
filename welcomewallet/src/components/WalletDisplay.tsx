@@ -1,15 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useWallet from '../hooks/useWallet';
 import { usePrivy } from '@privy-io/react-auth';
 
 const WalletDisplay: React.FC = () => {
   const { displayAddress, copyAddress, copied, loading } = useWallet();
   const { logout } = usePrivy();
-  const [showAddressOnly, setShowAddressOnly] = useState(window.innerWidth < 640);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const [showAddressOnly, setShowAddressOnly] = useState(isMobile);
 
+  // Listen for window resize events
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 640;
+      setIsMobile(mobile);
+      
+      // Reset state when transitioning between mobile/desktop
+      if (mobile !== isMobile) {
+        setShowAddressOnly(mobile);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isMobile]);
+  
   // Toggle address display on small screens
   const toggleAddressDisplay = () => {
-    if (window.innerWidth < 640) {
+    if (isMobile) {
       setShowAddressOnly(!showAddressOnly);
     }
   };
@@ -26,7 +43,7 @@ const WalletDisplay: React.FC = () => {
   return (
     <div className="flex items-center gap-2">
       {/* Always show on larger screens, toggle on mobile */}
-      {(!showAddressOnly || window.innerWidth >= 640) && (
+      {(!showAddressOnly || !isMobile) && (
         <div 
           className="wallet-address cursor-pointer min-h-[44px] flex items-center justify-center"
           onClick={() => {
@@ -53,21 +70,21 @@ const WalletDisplay: React.FC = () => {
         </div>
       )}
       
-      {/* Toggle button for mobile / Logout button for desktop */}
-      {(showAddressOnly || window.innerWidth >= 640) && (
+      {/* Always show logout button on desktop */}
+      {(!isMobile || isMobile && showAddressOnly) && (
         <button 
           className="p-2 rounded-full hover:bg-black hover:bg-opacity-20 min-h-[44px] min-w-[44px] flex items-center justify-center"
           onClick={() => {
-            if (window.innerWidth < 640 && showAddressOnly) {
+            if (isMobile && showAddressOnly) {
               toggleAddressDisplay();
             } else {
               logout();
             }
           }}
-          title={window.innerWidth < 640 && showAddressOnly ? "Show wallet address" : "Logout"}
-          aria-label={window.innerWidth < 640 && showAddressOnly ? "Show wallet address" : "Logout"}
+          title={isMobile && showAddressOnly ? "Show wallet address" : "Logout"}
+          aria-label={isMobile && showAddressOnly ? "Show wallet address" : "Logout"}
         >
-          {window.innerWidth < 640 && showAddressOnly ? (
+          {isMobile && showAddressOnly ? (
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
               <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
@@ -77,6 +94,20 @@ const WalletDisplay: React.FC = () => {
               <path fillRule="evenodd" d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
             </svg>
           )}
+        </button>
+      )}
+      
+      {/* Add a dedicated logout button in mobile view */}
+      {isMobile && !showAddressOnly && (
+        <button 
+          className="p-2 rounded-full hover:bg-black hover:bg-opacity-20 min-h-[44px] min-w-[44px] flex items-center justify-center"
+          onClick={logout}
+          title="Logout"
+          aria-label="Logout"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
+          </svg>
         </button>
       )}
     </div>
