@@ -26,7 +26,10 @@
   /* Chat interface styling */
   .chat-container {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
   }
 
   .chat-message {
@@ -34,6 +37,7 @@
     padding: 0.75rem 1rem;
     border-radius: 1rem;
     margin-bottom: 0.5rem;
+    word-break: break-word;
   }
 
   .user-message {
