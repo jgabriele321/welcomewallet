@@ -18,6 +18,20 @@ interface SendTokensModalProps {
 const SUPPORTED_ASSETS = [
   { symbol: 'ETH', name: 'Ethereum on Base', decimals: 18, chainId: 8453 },
   { 
+    symbol: 'BTC', 
+    name: 'Bitcoin on Base (cbBTC)', 
+    decimals: 8, 
+    address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', // cbBTC on Base
+    chainId: 8453 
+  },
+  { 
+    symbol: 'SOL', 
+    name: 'Solana on Base (uSOL)', 
+    decimals: 9, 
+    address: '0x9B8Df6E244526ab5F6e6400d331DB28C8fdDdb55', // uSOL on Base
+    chainId: 8453 
+  },
+  { 
     symbol: 'USDC', 
     name: 'USD Coin on Base', 
     decimals: 6, 

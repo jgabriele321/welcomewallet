@@ -17,6 +17,8 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 // Hardcoded token prices - in a real app, you'd fetch these from an API
 const STATIC_PRICES: { [symbol: string]: number } = {
   'ETH': 3100.00,
+  'BTC': 62000.00,
+  'SOL': 140.00,
   'USDC': 1.00,
   'TOBY': 0.001, // Example price
 };

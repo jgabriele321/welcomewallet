@@ -14,6 +14,8 @@ const ERC20_ABI = [
 
 // Token addresses on Base chain
 const TOKENS = {
+  BTC: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', // cbBTC on Base (chainId 8453)
+  SOL: '0x9B8Df6E244526ab5F6e6400d331DB28C8fdDdb55', // uSOL on Base (chainId 8453)
   USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC on Base (chainId 8453)
   TOBY: '0xb8d98a102b0079b69ffbc760c8d857a31653e56e', // TOBY token on Base (chainId 8453)
 };
@@ -213,31 +215,41 @@ export const getAllTokenBalances = async (
     
     // Debug token addresses
     console.log('Token addresses used for balance check:', {
+      BTC: TOKENS.BTC,
+      SOL: TOKENS.SOL,
       USDC: TOKENS.USDC,
       TOBY: TOKENS.TOBY,
       ENV_TOBY: import.meta.env.VITE_TOBY_TOKEN_ADDRESS
     });
     
     // Get token balances in parallel
-    const [usdcBalance, tobyBalance] = await Promise.all([
+    const [btcBalance, solBalance, usdcBalance, tobyBalance] = await Promise.all([
+      getTokenBalance(address, TOKENS.BTC),
+      getTokenBalance(address, TOKENS.SOL),
       getTokenBalance(address, TOKENS.USDC),
       getTokenBalance(address, TOKENS.TOBY),
     ]);
     
     console.log('Raw token balances:', {
+      btcBalance,
+      solBalance,
       usdcBalance,
       tobyBalance
     });
     
     // Get token prices in parallel
-    const [ethPrice, usdcPrice, tobyPrice] = await Promise.all([
+    const [ethPrice, btcPrice, solPrice, usdcPrice, tobyPrice] = await Promise.all([
       getTokenPrice('ETH'),
+      getTokenPrice('BTC'),
+      getTokenPrice('SOL'),
       getTokenPrice('USDC'),
       getTokenPrice('TOBY'),
     ]);
     
     // Calculate USD values
     const ethUsdValue = calculateUsdValue(ethBalance, ethPrice);
+    const btcUsdValue = calculateUsdValue(btcBalance.balance, btcPrice);
+    const solUsdValue = calculateUsdValue(solBalance.balance, solPrice);
     const usdcUsdValue = calculateUsdValue(usdcBalance.balance, usdcPrice);
     const tobyUsdValue = calculateUsdValue(tobyBalance.balance, tobyPrice);
     
@@ -248,6 +260,20 @@ export const getAllTokenBalances = async (
         icon: '⬨', // Ethereum symbol
         usdValue: ethUsdValue,
         priceUsd: ethPrice
+      },
+      {
+        symbol: 'BTC', // cbBTC token
+        balance: btcBalance.balance,
+        icon: '₿', // Bitcoin symbol
+        usdValue: btcUsdValue,
+        priceUsd: btcPrice
+      },
+      {
+        symbol: 'SOL', // uSOL token
+        balance: solBalance.balance,
+        icon: '◎', // Solana symbol
+        usdValue: solUsdValue,
+        priceUsd: solPrice
       },
       {
         symbol: 'USDC', // Hardcode to ensure consistency
@@ -295,6 +321,10 @@ export const getAllTokenBalances = async (
  */
 export const getTokenAddressBySymbol = (symbol: string): string => {
   switch (symbol.toUpperCase()) {
+    case 'BTC':
+      return TOKENS.BTC;
+    case 'SOL':
+      return TOKENS.SOL;
     case 'USDC':
       return TOKENS.USDC;
     case 'TOBY':
