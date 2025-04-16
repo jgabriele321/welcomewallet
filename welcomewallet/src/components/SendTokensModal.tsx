@@ -16,34 +16,38 @@ interface SendTokensModalProps {
 // Note: For Privy embedded wallets, chainIds must be in CAIP-2 format ('eip155:8453')
 // when sending transactions, but we use numeric format (8453) here for asset definitions
 const SUPPORTED_ASSETS = [
-  { symbol: 'ETH', name: 'Ethereum on Base', decimals: 18, chainId: 8453 },
+  { symbol: 'ETH', name: 'Ethereum on Base', decimals: 18, chainId: 8453, displaySymbol: 'ETH' },
   { 
     symbol: 'BTC', 
     name: 'Bitcoin on Base (cbBTC)', 
     decimals: 8, 
     address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', // cbBTC on Base
-    chainId: 8453 
+    chainId: 8453,
+    displaySymbol: 'cbBTC' // Use a clearer name in UI
   },
   { 
     symbol: 'SOL', 
     name: 'Solana on Base (uSOL)', 
     decimals: 9, 
     address: '0x9B8Df6E244526ab5F6e6400d331DB28C8fdDdb55', // uSOL on Base
-    chainId: 8453 
+    chainId: 8453,
+    displaySymbol: 'uSOL' // Use a clearer name in UI
   },
   { 
     symbol: 'USDC', 
     name: 'USD Coin on Base', 
     decimals: 6, 
     address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Base chain USDC
-    chainId: 8453 
+    chainId: 8453,
+    displaySymbol: 'USDC'
   },
   { 
     symbol: 'TOBY', 
     name: 'Toby Token on Base', 
     decimals: 18, 
     address: import.meta.env.VITE_TOBY_TOKEN_ADDRESS,
-    chainId: 8453 
+    chainId: 8453,
+    displaySymbol: 'TOBY'
   },
 ];
 
@@ -126,6 +130,12 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose, init
   const formatAddress = (address: string) => {
     if (!address) return '';
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
+  
+  // Get display symbol for an asset
+  const getDisplaySymbol = (symbol: string): string => {
+    const asset = SUPPORTED_ASSETS.find(a => a.symbol.toUpperCase() === symbol.toUpperCase());
+    return asset?.displaySymbol || symbol;
   };
   
   // Validate the form
@@ -399,7 +409,7 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose, init
             >
               {SUPPORTED_ASSETS.map((asset) => (
                 <option key={asset.symbol} value={asset.symbol}>
-                  {asset.name} ({asset.symbol})
+                  {asset.name} ({asset.displaySymbol || asset.symbol})
                 </option>
               ))}
             </select>
@@ -413,7 +423,7 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose, init
               </label>
               
               <div className="text-xs text-gray-400">
-                Balance: {assets.find(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase())?.balance || '0'} {selectedAsset}
+                Balance: {assets.find(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase())?.balance || '0'} {getDisplaySymbol(selectedAsset)}
                 <button 
                   onClick={() => {
                     const assetBalance = assets.find(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase())?.balance || '0';
@@ -438,7 +448,7 @@ const SendTokensModal: React.FC<SendTokensModalProps> = ({ isOpen, onClose, init
                 className="w-full bg-gray-700 rounded-l p-3 text-white min-h-[44px]"
               />
               <div className="bg-gray-600 rounded-r px-4 flex items-center font-medium">
-                {selectedAsset}
+                {getDisplaySymbol(selectedAsset)}
               </div>
             </div>
             

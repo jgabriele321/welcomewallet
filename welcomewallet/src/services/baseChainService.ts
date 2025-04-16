@@ -32,6 +32,7 @@ export interface Asset {
   icon: string;
   usdValue?: string; // USD value of the asset
   priceUsd?: number; // Price per token in USD
+  displayName?: string; // Display name for UI (especially for wrapped tokens like cbBTC, uSOL)
 }
 
 // Global provider instance to reuse across requests
@@ -257,17 +258,20 @@ export const getAllTokenBalances = async (
         balance: ethBalance,
         icon: '⬨', // Ethereum symbol
         usdValue: ethUsdValue,
-        priceUsd: prices.ETH
+        priceUsd: prices.ETH,
+        displayName: 'ETH' // Display name in UI
       },
       {
-        symbol: 'BTC', // cbBTC token
+        symbol: 'BTC', // BTC used for internal reference
+        displayName: 'cbBTC', // Display name in UI to avoid confusion
         balance: btcBalance.balance,
         icon: '₿', // Bitcoin symbol
         usdValue: btcUsdValue,
         priceUsd: prices.BTC
       },
       {
-        symbol: 'SOL', // uSOL token
+        symbol: 'SOL', // SOL used for internal reference
+        displayName: 'uSOL', // Display name in UI to avoid confusion
         balance: solBalance.balance,
         icon: '◎', // Solana symbol
         usdValue: solUsdValue,
@@ -275,6 +279,7 @@ export const getAllTokenBalances = async (
       },
       {
         symbol: 'USDC', // Hardcode to ensure consistency
+        displayName: 'USDC', // Display name in UI
         balance: usdcBalance.balance,
         icon: '$', // Dollar symbol for USDC
         usdValue: usdcUsdValue,
@@ -282,6 +287,7 @@ export const getAllTokenBalances = async (
       },
       {
         symbol: 'TOBY', // Hardcode to ensure consistency
+        displayName: 'TOBY', // Display name in UI
         balance: tobyBalance.balance,
         icon: '🔹', // Generic token symbol for TOBY
         usdValue: tobyUsdValue,

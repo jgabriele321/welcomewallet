@@ -117,7 +117,7 @@ const AssetList: React.FC = () => {
                 <div className="flex items-center gap-2 mb-2 sm:mb-0">
                   <span className="text-2xl">{asset.icon}</span>
                   <div>
-                    <span className="font-medium text-lg">{asset.symbol}</span>
+                    <span className="font-medium text-lg">{asset.displayName || asset.symbol}</span>
                     {/* Show USD value if available */}
                     {asset.usdValue && (
                       <div className="text-xs text-gray-400">
